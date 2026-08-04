@@ -71,7 +71,7 @@ bindBetaForm = function() {
       const response = await fetch(form.action, { method: 'POST', body: new FormData(form) });
       const result = await response.json();
       status.textContent = result.message || result.error || 'Something went wrong. Please try again.';
-      if (response.ok) { form.reset(); showToast(result.message || 'Request sent!'); }
+      if (response.ok) { form.reset(); showToast(result.message || 'Request sent!'); updateCount('beta'); }
     } catch {
       status.textContent = 'Connection error. Please try again.';
     } finally {
