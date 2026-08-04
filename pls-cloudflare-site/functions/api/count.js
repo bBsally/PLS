@@ -9,5 +9,11 @@ export async function onRequestGet({ request, env }) {
     count = val ? parseInt(val) : 0;
   }
 
-  return Response.json({ count });
+  return new Response(JSON.stringify({ count }), {
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+      "Pragma": "no-cache"
+    }
+  });
 }

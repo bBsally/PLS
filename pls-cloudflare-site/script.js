@@ -89,7 +89,7 @@ bindBetaForm = function() {
 
 /* ===== FETCH WAITLIST COUNT ===== */
 function updateCount(type) {
-  fetch('/api/count?type=' + (type || 'beta'))
+  fetch('/api/count?type=' + (type || 'beta') + '&t=' + Date.now())
     .then(r => r.json())
     .then(d => {
       document.querySelectorAll('.beta-count').forEach(el => {
