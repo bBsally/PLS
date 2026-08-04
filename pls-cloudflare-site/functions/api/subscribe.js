@@ -33,7 +33,7 @@ export async function onRequestPost({ request, env }) {
   // Send email via Resend (only for beta requests)
   if (type === "beta") {
     if (!env.RESEND_API_KEY) {
-      return Response.json({ error: "The beta mailbox is not configured yet." }, { status: 503 });
+      return Response.json({ error: "RESEND_API_KEY not set in Cloudflare environment variables." }, { status: 503 });
     }
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -43,7 +43,7 @@ export async function onRequestPost({ request, env }) {
         "User-Agent": "pls-beta-access/1.0"
       },
       body: JSON.stringify({
-        from: env.FROM_EMAIL || "PL$ <hello@yourdomain.com>",
+        from: env.FROM_EMAIL || "onboarding@resend.dev",
         to: ["bbsally389@gmail.com"],
         reply_to: email,
         subject: "New PL$ beta access request",
@@ -51,7 +51,8 @@ export async function onRequestPost({ request, env }) {
       }),
     });
     if (!response.ok) {
-      return Response.json({ error: "Could not send your request. Please try again later." }, { status: 502 });
+      const errText = await response.text();
+      return Response.json({ error: `Resend error: ${response.status} — ${errText}` }, { status: 502 });
     }
   }
 
