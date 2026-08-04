@@ -79,3 +79,17 @@ bindBetaForm = function() {
     }
   });
 };
+
+
+/* ===== FETCH WAITLIST COUNT ===== */
+function updateCount(type) {
+  fetch('/api/count?type=' + (type || 'beta'))
+    .then(r => r.json())
+    .then(d => {
+      document.querySelectorAll('.beta-count').forEach(el => {
+        el.textContent = d.count ?? '—';
+      });
+    })
+    .catch(() => {});
+}
+updateCount('beta');

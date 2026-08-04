@@ -20,6 +20,7 @@
         <h1>PL<span>$</span><small>(- by bB.sally)</small></h1>
         <p class="intro">A PLugin $ created by bB.sally to make work easier in every DAW.</p>
         <div class="status"><i></i> system online <span>Cracow / PL</span></div>
+        <p class="waitlist-count"><span class="beta-count">—</span> producers on the waitlist</p>
       </section>
 
       <section class="folder-field" aria-label="Katalogi PL$">
@@ -57,7 +58,8 @@
         <div class="plugin-title"><p class="eyebrow">VST3 / 001</p><h2 id="panel-title">PL$</h2><p>multi-effect signal chain</p></div>
         <div class="plugin-image"><img src="assets/pls-plugin-interface.png" alt="Interfejs wtyczki PL$ —" /></div>
         <div class="panel-copy"><p>The first plug-in in the PL$ collection. Build your effect chain, break the signal and keep control on your side.</p><ul><li>Reverb / Delay / VHS / Glitch / Reverse / 420</li><li>Format: VST3</li><li>Status: in development</li></ul></div>
-        <form class="beta-form" action="/api/beta" method="post"><label for="beta-email">Ask for beta access ↗<span>Leave your e-mail and I’ll get back to you.</span></label><div><input id="beta-email" name="email" type="email" placeholder="your@email.com" autocomplete="email" required /><button type="submit">send</button></div><p class="form-status" aria-live="polite"></p></form>
+        <form class="beta-form" action="/api/subscribe" method="post">
+          <input type="hidden" name="type" value="beta" /><label for="beta-email">Ask for beta access ↗<span>Leave your e-mail and I’ll get back to you.</span></label><div><input id="beta-email" name="email" type="email" placeholder="your@email.com" autocomplete="email" required /><button type="submit">send</button></div><p class="form-status" aria-live="polite"></p></form>
       </article>
     </template>
 
@@ -74,7 +76,8 @@
     </template>
 
     <template id="store-template">
-      <article class="text-view store-view"><p class="eyebrow">STORE / PL$</p><h2 id="panel-title">Coming Soon</h2><p>The store will open once PL$ v1.0 is ready for release.</p><p class="muted">Expected: Q4 2026. Sign up for the waitlist below to get notified — early supporters get a discount.</p><form class="beta-form" action="/api/beta" method="post"><label for="store-email">Notify me at launch ↗<span>Enter your e-mail to join the waitlist.</span></label><div><input id="store-email" name="email" type="email" placeholder="your@email.com" autocomplete="email" required /><button type="submit">send</button></div><p class="form-status" aria-live="polite"></p></form></article>
+      <article class="text-view store-view"><p class="eyebrow">STORE / PL$</p><h2 id="panel-title">Coming Soon</h2><p>The store will open once PL$ v1.0 is ready for release.</p><p class="muted">Expected: Q4 2026. Sign up for the waitlist below to get notified — early supporters get a discount.</p><form class="beta-form" action="/api/subscribe" method="post">
+          <input type="hidden" name="type" value="newsletter" /><label for="store-email">Notify me at launch ↗<span>Enter your e-mail to join the waitlist.</span></label><div><input id="store-email" name="email" type="email" placeholder="your@email.com" autocomplete="email" required /><button type="submit">send</button></div><p class="form-status" aria-live="polite"></p></form></article>
     </template>
     <script src="script.js"></script>
   </body>
