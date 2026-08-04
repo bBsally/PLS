@@ -32,6 +32,10 @@
         <button class="folder folder-tools" data-panel="tools" type="button">
           <span class="folder-icon">▰</span><span class="folder-body"><b>TOOLS</b><small>in development</small></span>
         </button>
+
+        <button class="folder folder-store" data-panel="store" type="button">
+          <span class="folder-icon">▰</span><span class="folder-body"><b>STORE</b><small>buy PL$</small></span>
+        </button>
         <button class="folder folder-contact" data-panel="contact" type="button">
           <span class="folder-icon">▰</span><span class="folder-body"><b>CONTACT</b><small>signal / mail</small></span>
         </button>
@@ -67,6 +71,10 @@
 
     <template id="contact-template">
       <article class="text-view contact-view"><p class="eyebrow">OPEN CHANNEL</p><h2 id="panel-title">Say Hello!</h2><p>ask me for everything:</p><a href="https://www.instagram.com/bb.sally_/" target="_blank" rel="noreferrer">instagram / @bb.sally_ ↗</a><a href="mailto:bbsally389@gmail.com">bbsally389@gmail.com ↗</a></article>
+    </template>
+
+    <template id="store-template">
+      <article class="text-view store-view"><p class="eyebrow">STORE / PL$</p><h2 id="panel-title">Coming Soon</h2><p>The store will open once PL$ v1.0 is ready for release.</p><p class="muted">Expected: Q4 2026. Sign up for the waitlist below to get notified — early supporters get a discount.</p><form class="beta-form" action="/api/beta" method="post"><label for="store-email">Notify me at launch ↗<span>Enter your e-mail to join the waitlist.</span></label><div><input id="store-email" name="email" type="email" placeholder="your@email.com" autocomplete="email" required /><button type="submit">send</button></div><p class="form-status" aria-live="polite"></p></form></article>
     </template>
     <script src="script.js"></script>
   </body>
