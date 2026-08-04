@@ -10,20 +10,24 @@ export async function onRequestPost({ request, env }) {
   let count = "?";
 
   // Save to KV and increment counter
-  if (env.PLS_DB) {
-    const key = `${type}:${email.toLowerCase()}`;
-    const existing = await env.PLS_DB.get(key);
-    if (!existing) {
-      await env.PLS_DB.put(key, JSON.stringify({ date: new Date().toISOString() }));
-      const countKey = `${type}-count`;
-      const current = parseInt(await env.PLS_DB.get(countKey) || "0");
-      const next = current + 1;
-      await env.PLS_DB.put(countKey, String(next));
-      count = String(next);
-    } else {
-      const countKey = `${type}-count`;
-      count = await env.PLS_DB.get(countKey) || "?";
+  try {
+    if (env.PLS_DB) {
+      const key = `${type}:${email.toLowerCase()}`;
+      const existing = await env.PLS_DB.get(key);
+      if (!existing) {
+        await env.PLS_DB.put(key, JSON.stringify({ date: new Date().toISOString() }));
+        const countKey = `${type}-count`;
+        const current = parseInt(await env.PLS_DB.get(countKey) || "0");
+        const next = current + 1;
+        await env.PLS_DB.put(countKey, String(next));
+        count = String(next);
+      } else {
+        const countKey = `${type}-count`;
+        count = await env.PLS_DB.get(countKey) || "?";
+      }
     }
+  } catch (e) {
+    console.error("KV error:", e);
   }
 
   // Send email via Resend (only for beta requests)
