@@ -93,3 +93,12 @@ function updateCount(type) {
     .catch(() => {});
 }
 updateCount('beta');
+
+/* ===== OPEN STORE FROM PLUGIN ===== */
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-open-store]');
+  if (!btn) return;
+  e.preventDefault();
+  const storeFolder = document.querySelector('[data-panel="store"]');
+  if (storeFolder) storeFolder.click();
+});
