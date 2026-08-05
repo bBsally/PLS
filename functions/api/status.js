@@ -2,9 +2,6 @@ export async function onRequestPost({ request, env }) {
   try {
     const data = await request.json();
 
-    // TEMPORARY: no secret check for testing
-    console.log("Received activity:", data.activity);
-
     if (env.PLS_DB) {
       await env.PLS_DB.put("current-status", JSON.stringify({
         status: data.status || "offline",
@@ -31,7 +28,7 @@ export async function onRequestGet({ request, env }) {
         });
       }
     }
-    return Response.json({ status: "offline", activity: "chilling", category: "idle" });
+    return Response.json({ status: "offline", activity: "chilling", category: "idle", window: "" });
   } catch (e) {
     return Response.json({ error: "KV error: " + e.message }, { status: 500 });
   }
