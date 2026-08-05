@@ -171,7 +171,7 @@ button, a { font:inherit; color:inherit; }
 }
 
 /* ===== NOW PLAYING / STATUS ===== */
-.now-playing { margin-top: 14px; text-align: center; opacity: 0; animation: fadeInUp 0.6s 0.35s ease both; }
+.now-playing { margin-top: 40px; text-align: center; opacity: 0; animation: fadeInUp 0.6s 0.35s ease both; }
 .now-label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
 .now-line { display: inline-flex; align-items: center; gap: 8px; padding: 5px 14px; border: 1px solid var(--ink); background: rgba(21,21,21,0.04); font-size: 11px; }
 .now-dot { display: block; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
