@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="PL$ — independent VST3 audio tools." />
+    <title>PL$ / audio tools</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="desktop" aria-label="PL$ audio tools">
+      <header class="topbar">
+        <a class="wordmark" href="#home" aria-label="PL$ — home">PL<span>$</span></a>
+        <p>VST3 / BB.SALLY / SYSTEM</p>
+        <button class="sound-toggle" type="button" aria-pressed="false">sound: off</button>
+      </header>
+
+      <section class="hero" id="home">
+        <p class="eyebrow">01 / PL$ SYSTEMS</p>
+        <h1>PL<span>$</span><small>(- by bB.sally)</small></h1>
+        <div class="now-playing" id="now-playing">
+          <p class="now-label">what bB.sally is doing now</p>
+          <div class="now-line">
+            <span class="now-dot" id="now-dot"></span>
+            <span class="now-text" id="now-text">loading…</span>
+          </div>
+        </div>
+
+        <p class="intro">A PLugin $ created by bB.sally to make work easier in every DAW.</p>
+        <div class="status"><i></i> system online <span>Cracow / PL</span></div>
+        <p class="waitlist-count"><span class="beta-count">—</span> producers on the waitlist</p>
+      </section>
+
+      <section class="folder-field" aria-label="Katalogi PL$">
+        <button class="folder folder-plugin" data-panel="plugin" type="button">
+          <span class="folder-icon">▰</span><span class="folder-body"><b>PL$</b><small>VST3 / 001</small></span>
+        </button>
+        <button class="folder folder-about" data-panel="about" type="button">
+          <span class="folder-icon">▰</span><span class="folder-body"><b>README_PL$</b><small>READ_ME.txt</small></span>
+        </button>
+        <button class="folder folder-tools" data-panel="tools" type="button">
+          <span class="folder-icon">▰</span><span class="folder-body"><b>TOOLS</b><small>in development</small></span>
+        </button>
+
+        <button class="folder folder-store" data-panel="store" type="button">
+          <span class="folder-icon">▰</span><span class="folder-body"><b>STORE</b><small>buy PL$</small></span>
+        </button>
+        <button class="folder folder-contact" data-panel="contact" type="button">
+          <span class="folder-icon">▰</span><span class="folder-body"><b>CONTACT</b><small>signal / mail</small></span>
+        </button>
+      </section>
+
+      <footer class="footer"><span>© 2026 PL$</span><span>VST3 / WINDOWS + MACOS</span><span>click a folder to enter</span></footer>
+    </main>
+
+    <dialog class="panel" id="panel" aria-labelledby="panel-title">
+      <div class="panel-head">
+        <p id="panel-path">/PL$/</p>
+        <button class="close" type="button" aria-label="Zamknij">[ close ]</button>
+      </div>
+      <div class="panel-content" id="panel-content"></div>
+    </dialog>
+
+    <template id="plugin-template">
+      <article class="plugin-view">
+        <div class="plugin-title"><p class="eyebrow">VST3 / 001</p><h2 id="panel-title">PL$</h2><p>multi-effect signal chain</p></div>
+        <div class="plugin-image"><img src="assets/pls-plugin-interface.png" alt="Interfejs wtyczki PL$ —" /></div>
+        <div class="panel-copy"><p>The first plug-in in the PL$ collection. Build your effect chain, break the signal and keep control on your side.</p><ul><li>Reverb / Delay / VHS / Glitch / Reverse / 420</li><li>Format: VST3</li><li>Status: in development</li></ul></div>
+        <a href="#" class="outline-button" data-open-store>Join the waitlist →</a>
+      </article>
+    </template>
+
+    <template id="about-template">
+      <article class="text-view about-view"><p class="eyebrow">README_PL$.txt</p><h2 id="panel-title">PL$ <small>is your plugin too, so be happy, bitch.</small></h2><p>Designed to fit anywhere in your workflow. From vocals and drums to synths, samples and entire mixes — PL$ gives every sound more depth, character and life. Shape your tone, enhance your textures and turn ordinary audio into something that stands out.</p><p>Built independently by a young producer from Poland, PL$ is made for people who want their sound to feel less perfect and more personal.</p></article>
+    </template>
+
+    <template id="tools-template">
+      <article class="text-view"><p class="eyebrow">INDEX / UPCOMING</p><h2 id="panel-title">things I’m<br />working on.</h2><div class="tool-list"><p><span>01</span> plug-in optimisation <em>processing</em></p><p><span>02</span> an easy installer <em>building</em></p><p><span>03</span> improving the code and sounds until they feel even more quality <em>tuning</em></p></div><p class="muted">This folder updates when something new is ready.</p></article>
+    </template>
+
+    <template id="contact-template">
+      <article class="text-view contact-view"><p class="eyebrow">OPEN CHANNEL</p><h2 id="panel-title">Say Hello!</h2><p>ask me for everything:</p><a href="https://www.instagram.com/bb.sally_/" target="_blank" rel="noreferrer">instagram / @bb.sally_ ↗</a><a href="mailto:bbsally389@gmail.com">bbsally389@gmail.com ↗</a></article>
+    </template>
+
+    <template id="store-template">
+      <article class="text-view store-view"><p class="eyebrow">STORE / PL$</p><h2 id="panel-title">Coming Soon</h2><p>The store will open once PL$ v1.0 is ready for release.</p><p class="muted">Expected: Q4 2026. Sign up for the waitlist below to get notified — early supporters get a discount.</p><form class="beta-form" action="/api/subscribe" method="post">
+          <input type="hidden" name="type" value="beta" /><label for="store-email">Notify me at launch ↗<span>Enter your e-mail to join the waitlist.</span></label><div><input id="store-email" name="email" type="email" placeholder="your@email.com" autocomplete="email" required /><button type="submit">send</button></div><p class="form-status" aria-live="polite"></p></form></article>
+    </template>
+    <script src="script.js"></script>
+  </body>
+</html>
