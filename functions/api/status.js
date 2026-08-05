@@ -2,12 +2,9 @@ export async function onRequestPost({ request, env }) {
   try {
     const data = await request.json();
 
-    // TEMPORARY: log what we received for debugging
-    console.log("Received:", JSON.stringify(data));
-    console.log("Secret received:", data.secret);
-    console.log("Expected secret starts with:", env.AGENT_SECRET ? env.AGENT_SECRET.substring(0,5) : "NOT SET");
+    // TEMPORARY: no secret check for testing
+    console.log("Received activity:", data.activity);
 
-    // Save to KV regardless (for testing)
     if (env.PLS_DB) {
       await env.PLS_DB.put("current-status", JSON.stringify({
         status: data.status || "offline",
@@ -17,18 +14,25 @@ export async function onRequestPost({ request, env }) {
         updated: new Date().toISOString()
       }));
       return Response.json({ success: true, saved: data.activity });
-    } else {
-      return Response.json({ error: "KV not bound" }, { status: 500 });
     }
+    return Response.json({ error: "KV not bound" }, { status: 500 });
   } catch (e) {
-    return Response.json({ error: "Invalid request: " + e.message }, { status: 400 });
+    return Response.json({ error: "Error: " + e.message }, { status: 400 });
   }
 }
 
 export async function onRequestGet({ request, env }) {
-  return Response.json({ 
-    message: "status endpoint works",
-    secret_set: !!env.AGENT_SECRET,
-    secret_preview: env.AGENT_SECRET ? env.AGENT_SECRET.substring(0,5) + "..." : "NOT SET"
-  });
+  try {
+    if (env.PLS_DB) {
+      const raw = await env.PLS_DB.get("current-status");
+      if (raw) {
+        return new Response(raw, {
+          headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
+        });
+      }
+    }
+    return Response.json({ status: "offline", activity: "chilling", category: "idle" });
+  } catch (e) {
+    return Response.json({ error: "KV error: " + e.message }, { status: 500 });
+  }
 }
