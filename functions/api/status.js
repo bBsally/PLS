@@ -2,6 +2,10 @@ export async function onRequestPost({ request, env }) {
   try {
     const data = await request.json();
 
+    if (data.secret !== env.AGENT_SECRET) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     if (env.PLS_DB) {
       await env.PLS_DB.put("current-status", JSON.stringify({
         status: data.status || "offline",
@@ -19,17 +23,5 @@ export async function onRequestPost({ request, env }) {
 }
 
 export async function onRequestGet({ request, env }) {
-  try {
-    if (env.PLS_DB) {
-      const raw = await env.PLS_DB.get("current-status");
-      if (raw) {
-        return new Response(raw, {
-          headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
-        });
-      }
-    }
-    return Response.json({ status: "offline", activity: "chilling", category: "idle", window: "" });
-  } catch (e) {
-    return Response.json({ error: "KV error: " + e.message }, { status: 500 });
-  }
+  return Response.json({ message: "status endpoint works. Use POST." });
 }
