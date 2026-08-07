@@ -31,6 +31,7 @@ document.querySelectorAll('[data-panel]').forEach((folder) => {
     const template = document.querySelector(`#${folder.dataset.panel}-template`);
     content.replaceChildren(template.content.cloneNode(true));
     bindBetaForm();
+    if (folder.dataset.panel === 'plugin') initCarousel();
     dialog.showModal();
   });
 });
@@ -140,3 +141,131 @@ function loadStatus() {
 }
 loadStatus();
 setInterval(loadStatus, 30000);
+
+/* ===== FOLDER PARTICLE EFFECT ($ / PL) ===== */
+document.querySelectorAll('.folder').forEach(folder => {
+  let interval = null;
+
+  function spawnParticle() {
+    const el = document.createElement('span');
+    const isPL = Math.random() > 0.5;
+    el.className = 'folder-particle';
+    el.textContent = isPL ? 'PL' : '$';
+    el.style.left = (Math.random() * 60 + 20) + '%';
+    el.style.top = (Math.random() * 25 + 55) + '%';
+    el.style.fontSize = (Math.random() * 10 + 12) + 'px';
+    el.style.animation = `${isPL ? 'particleFloatPL' : 'particleFloatDollar'} ${Math.random() * 0.6 + 0.9}s ease-out forwards`;
+    folder.appendChild(el);
+    setTimeout(() => el.remove(), 1800);
+  }
+
+  folder.addEventListener('mouseenter', () => {
+    if (interval) return;
+    spawnParticle();
+    interval = setInterval(spawnParticle, 85);
+  });
+
+  folder.addEventListener('mouseleave', () => {
+    clearInterval(interval);
+    interval = null;
+  });
+});
+
+/* ===== PLUGIN CAROUSEL ===== */
+function initCarousel() {
+  const carousel = document.getElementById('plugin-carousel');
+  if (!carousel) return;
+
+  const track = carousel.querySelector('.carousel-track');
+  const slides = carousel.querySelectorAll('.carousel-slide');
+  const dotsContainer = carousel.querySelector('.carousel-dots');
+  const prevBtn = carousel.querySelector('.carousel-prev');
+  const nextBtn = carousel.querySelector('.carousel-next');
+
+  if (!slides.length) return;
+
+  let current = 0;
+  let isDragging = false;
+  let startX = 0;
+
+  slides.forEach((_, i) => {
+    const dot = document.createElement('button');
+    dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+    dot.type = 'button';
+    dot.ariaLabel = 'Slide ' + (i + 1);
+    dot.addEventListener('click', () => goTo(i));
+    dotsContainer.appendChild(dot);
+  });
+
+  const dots = dotsContainer.querySelectorAll('.carousel-dot');
+
+  function updateSlides() {
+    slides.forEach((s, i) => s.classList.toggle('active', i === current));
+    dots.forEach((d, i) => d.classList.toggle('active', i === current));
+  }
+
+  function goTo(index) {
+    if (index < 0) index = slides.length - 1;
+    if (index >= slides.length) index = 0;
+    current = index;
+    track.style.transform = `translateX(-${current * 100}%)`;
+    updateSlides();
+  }
+
+  prevBtn.addEventListener('click', () => goTo(current - 1));
+  nextBtn.addEventListener('click', () => goTo(current + 1));
+
+  // Mouse drag
+  track.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startX = e.pageX;
+    track.style.transition = 'none';
+    track.style.cursor = 'grabbing';
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const walk = e.pageX - startX;
+    const percent = (walk / carousel.offsetWidth) * 100;
+    track.style.transform = `translateX(calc(-${current * 100}% + ${percent}%))`;
+  });
+
+  window.addEventListener('mouseup', (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    track.style.transition = 'transform 0.55s cubic-bezier(0.22, 1, 0.36, 1)';
+    track.style.cursor = 'grab';
+    const walk = e.pageX - startX;
+    const threshold = carousel.offsetWidth * 0.18;
+    if (walk < -threshold) goTo(current + 1);
+    else if (walk > threshold) goTo(current - 1);
+    else goTo(current);
+  });
+
+  // Touch drag
+  track.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    startX = e.touches[0].pageX;
+    track.style.transition = 'none';
+  }, { passive: true });
+
+  track.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    const walk = e.touches[0].pageX - startX;
+    const percent = (walk / carousel.offsetWidth) * 100;
+    track.style.transform = `translateX(calc(-${current * 100}% + ${percent}%))`;
+  }, { passive: true });
+
+  track.addEventListener('touchend', (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    track.style.transition = 'transform 0.55s cubic-bezier(0.22, 1, 0.36, 1)';
+    const walk = e.changedTouches[0].pageX - startX;
+    const threshold = carousel.offsetWidth * 0.18;
+    if (walk < -threshold) goTo(current + 1);
+    else if (walk > threshold) goTo(current - 1);
+    else goTo(current);
+  });
+
+  updateSlides();
+}

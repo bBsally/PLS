@@ -180,3 +180,136 @@ button, a { font:inherit; color:inherit; }
 .now-icon { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex-shrink: 0; }
 .now-icon svg { width: 100%; height: 100%; fill: var(--ink); }
 .now-text { color: var(--ink); }
+
+/* ===== FOLDER PARTICLES ($ / PL) ===== */
+.folder-particle {
+  position: absolute;
+  pointer-events: none;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 700;
+  color: var(--ink);
+  opacity: 0;
+  z-index: 100;
+  text-shadow: 0 0 3px rgba(245,245,241,0.35);
+  letter-spacing: -0.02em;
+}
+
+@keyframes particleFloatPL {
+  0%   { opacity: 0; transform: translateY(0) scale(0.35) rotate(-12deg); }
+  18%  { opacity: 0.9; transform: translateY(-18px) scale(1.08) rotate(6deg); }
+  100% { opacity: 0; transform: translateY(-110px) scale(0.45) rotate(22deg); }
+}
+
+@keyframes particleFloatDollar {
+  0%   { opacity: 0; transform: translateY(0) scale(0.35) rotate(12deg); }
+  18%  { opacity: 0.9; transform: translateY(-22px) scale(1.12) rotate(-6deg); }
+  100% { opacity: 0; transform: translateY(-95px) scale(0.55) rotate(-18deg); }
+}
+
+/* ===== PLUGIN CAROUSEL ===== */
+.plugin-carousel {
+  grid-column: 1 / -1;
+  width: 100%;
+  border: 1px solid var(--ink);
+  background: #181818;
+  overflow: hidden;
+  position: relative;
+  user-select: none;
+}
+
+.carousel-track {
+  display: flex;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: grab;
+  will-change: transform;
+}
+
+.carousel-track:active {
+  cursor: grabbing;
+}
+
+.carousel-slide {
+  min-width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #151515;
+  opacity: 0;
+  animation: slideReveal 0.5s ease forwards;
+}
+.carousel-slide:nth-child(1) { animation-delay: 0.05s; }
+.carousel-slide:nth-child(2) { animation-delay: 0.1s; }
+.carousel-slide:nth-child(3) { animation-delay: 0.15s; }
+.carousel-slide:nth-child(4) { animation-delay: 0.2s; }
+
+.carousel-slide img {
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: 0.88;
+  transition: opacity 0.3s, transform 0.5s;
+}
+
+.carousel-slide.active img {
+  opacity: 1;
+  transform: scale(1.015);
+}
+
+@keyframes slideReveal {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.carousel-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: var(--paper);
+  border-top: 1px solid var(--ink);
+}
+
+.carousel-prev,
+.carousel-next {
+  background: none;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  padding: 5px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.carousel-prev:hover,
+.carousel-next:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.carousel-dots {
+  display: flex;
+  gap: 7px;
+}
+
+.carousel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.carousel-dot.active {
+  background: var(--ink);
+  transform: scale(1.25);
+}
+
+/* Responsive carousel */
+@media (max-width: 650px) {
+  .plugin-view { grid-template-columns: 1fr; gap: 18px; }
+}
