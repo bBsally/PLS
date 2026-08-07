@@ -146,7 +146,7 @@ button, a { font:inherit; color:inherit; }
 
 /* Responsive store position */
 @media (max-width:650px) {
-  .folder-store { left:52%; top:120px; }
+  .folder-store { left:50%; top:120px; margin-left:-65px; }
 }
 
 /* Reduced motion */
