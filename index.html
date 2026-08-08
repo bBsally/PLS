@@ -45,6 +45,9 @@
         <button class="folder folder-store" data-panel="store" type="button">
           <span class="folder-icon">▰</span><span class="folder-body"><b>STORE</b><small>buy PL$</small></span>
         </button>
+        <button class="folder folder-game" data-panel="game" type="button">
+          <span class="folder-icon">▰</span><span class="folder-body"><b>GAME</b><small>catch PL$</small></span>
+        </button>
         <button class="folder folder-contact" data-panel="contact" type="button">
           <span class="folder-icon">▰</span><span class="folder-body"><b>CONTACT</b><small>signal / mail</small></span>
         </button>
@@ -97,6 +100,45 @@
     <template id="store-template">
       <article class="text-view store-view"><p class="eyebrow">STORE / PL$</p><h2 id="panel-title">Coming Soon</h2><p>The store will open once PL$ v1.0 is ready for release.</p><p class="muted">Expected: Q4 2026. Sign up for the waitlist below to get notified — early supporters get a discount.</p><form class="beta-form" action="/api/subscribe" method="post">
           <input type="hidden" name="type" value="beta" /><label for="store-email">Notify me at launch ↗<span>Enter your e-mail to join the waitlist.</span></label><div><input id="store-email" name="email" type="email" placeholder="your@email.com" autocomplete="email" required /><button type="submit">send</button></div><p class="form-status" aria-live="polite"></p></form></article>
+    </template>
+    <template id="game-template">
+      <article class="game-view">
+        <div class="game-header">
+          <p class="eyebrow">ARCADE / 001</p>
+          <h2 id="panel-title">PL$ DROP</h2>
+          <p>catch the falling items</p>
+        </div>
+        <div class="game-container">
+          <canvas id="game-canvas" width="640" height="480"></canvas>
+          <div class="game-ui">
+            <div class="game-stats">
+              <span id="game-score">0</span>
+              <span id="game-timer">60</span>
+            </div>
+            <div class="game-overlay" id="game-start">
+              <p>press START or SPACE</p>
+              <button class="outline-button" id="game-start-btn">START</button>
+            </div>
+            <div class="game-overlay hidden" id="game-over">
+              <p>game over</p>
+              <p id="game-final-score">score: 0</p>
+              <button class="outline-button" id="game-restart-btn">RESTART</button>
+            </div>
+          </div>
+          <div class="game-mobile-controls">
+            <button id="game-left">◀</button>
+            <button id="game-right">▶</button>
+          </div>
+        </div>
+        <div class="game-info">
+          <ul>
+            <li><span class="item-icon">PL</span> / <span class="item-icon">$</span> = 10 pts</li>
+            <li><span class="item-icon">🔊</span> speaker = 15 pts</li>
+            <li><span class="item-icon">🎤</span> mic = 30 pts</li>
+            <li><span class="item-icon">💎</span> diamond aux = 50 pts</li>
+          </ul>
+        </div>
+      </article>
     </template>
     <script src="script.js"></script>
   </body>
