@@ -288,28 +288,43 @@ function initGame() {
 
   const W = 640, H = 480;
   let running = false, score = 0, timeLeft = 60, frame = 0;
-  let items = [], particles = [], clouds = [];
-  let spawnRate = 60, speedMult = 1;
+  let items = [], particles = [], clouds = [], planes = [];
+  let spawnRate = 90, speedMult = 0.55;
   let keys = { left: false, right: false };
   let animId, timerId;
+  let bgPhase = 0; // 0=night, 1=dawn, 2=day, 3=sunset
+  let bgTimer = 0;
 
-  const player = { x: W / 2 - 20, y: H - 55, w: 40, h: 45, speed: 5 };
+  // Player (rapper head with dreads, shades, gold chain)
+  const player = { x: W / 2 - 22, y: H - 62, w: 44, h: 55, speed: 4.2 };
 
+  // Item types - MUCH SLOWER
   const itemTypes = [
-    { text: '$', score: 10, color: '#617858', chance: 0.35, size: 18, speed: 2 },
-    { text: 'PL', score: 10, color: '#4d5c47', chance: 0.30, size: 16, speed: 2.2 },
-    { text: '🔊', score: 15, color: '#d4a574', chance: 0.18, size: 20, speed: 2.5 },
-    { text: '🎤', score: 30, color: '#c4b8ad', chance: 0.12, size: 20, speed: 3 },
-    { text: '💎', score: 50, color: '#7ec8e3', chance: 0.05, size: 20, speed: 4 },
+    { text: '$', score: 10, color: '#617858', chance: 0.35, size: 18, speed: 0.9 },
+    { text: 'PL', score: 10, color: '#4d5c47', chance: 0.30, size: 16, speed: 1.0 },
+    { text: '\uD83D\uDD0A', score: 15, color: '#d4a574', chance: 0.18, size: 20, speed: 1.1 },
+    { text: '\uD83C\uDFA4', score: 30, color: '#c4b8ad', chance: 0.12, size: 20, speed: 1.3 },
+    { text: '\uD83D\uDC8E', score: 50, color: '#7ec8e3', chance: 0.05, size: 20, speed: 1.5 },
   ];
 
-  for (let i = 0; i < 6; i++) {
+  // Init clouds
+  for (let i = 0; i < 5; i++) {
     clouds.push({
       x: Math.random() * W,
-      y: Math.random() * (H / 2),
-      w: 40 + Math.random() * 60,
-      h: 15 + Math.random() * 20,
-      speed: 0.2 + Math.random() * 0.3
+      y: 20 + Math.random() * (H / 3),
+      w: 50 + Math.random() * 70,
+      h: 12 + Math.random() * 16,
+      speed: 0.15 + Math.random() * 0.25
+    });
+  }
+
+  // Init planes
+  for (let i = 0; i < 2; i++) {
+    planes.push({
+      x: -60 - Math.random() * 200,
+      y: 30 + Math.random() * 80,
+      speed: 0.8 + Math.random() * 0.6,
+      size: 1
     });
   }
 
@@ -318,37 +333,182 @@ function initGame() {
     ctx.fillRect(Math.floor(x), Math.floor(y), w, h);
   }
 
+  function getSkyColors(phase) {
+    // phase: 0=night, 1=dawn, 2=day, 3=sunset
+    const palettes = [
+      { top: [10, 8, 22], bot: [25, 20, 45], starAlpha: 0.8, sun: false, moon: true },
+      { top: [40, 30, 60], bot: [180, 100, 70], starAlpha: 0.2, sun: true, moon: false },
+      { top: [70, 140, 200], bot: [180, 210, 235], starAlpha: 0, sun: true, moon: false },
+      { top: [60, 40, 80], bot: [230, 130, 60], starAlpha: 0.15, sun: true, moon: false },
+    ];
+    return palettes[phase];
+  }
+
   function drawSky() {
-    for (let y = 0; y < H; y += 4) {
+    const pal = getSkyColors(bgPhase);
+    // Pixel sky gradient
+    for (let y = 0; y < H; y += 3) {
       const t = y / H;
-      const r = Math.floor(13 + t * 25);
-      const g = Math.floor(13 + t * 20);
-      const b = Math.floor(18 + t * 35);
-      drawPixelRect(0, y, W, 4, `rgb(${r},${g},${b})`);
+      const r = Math.floor(pal.top[0] + t * (pal.bot[0] - pal.top[0]));
+      const g = Math.floor(pal.top[1] + t * (pal.bot[1] - pal.top[1]));
+      const b = Math.floor(pal.top[2] + t * (pal.bot[2] - pal.top[2]));
+      drawPixelRect(0, y, W, 3, `rgb(${r},${g},${b})`);
     }
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    for (let i = 0; i < 30; i++) {
-      const sx = ((i * 137) % W);
-      const sy = ((i * 53) % (H / 2));
-      ctx.fillRect(sx, sy, 2, 2);
+
+    // Stars (only at night/dawn)
+    if (pal.starAlpha > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${pal.starAlpha})`;
+      for (let i = 0; i < 25; i++) {
+        const sx = ((i * 137) % W);
+        const sy = ((i * 53) % (H / 2));
+        const twinkle = Math.sin(frame * 0.05 + i) * 0.4 + 0.6;
+        ctx.globalAlpha = twinkle * pal.starAlpha;
+        ctx.fillRect(sx, sy, 2, 2);
+      }
+      ctx.globalAlpha = 1;
     }
+
+    // Moon (night)
+    if (pal.moon) {
+      drawPixelRect(W - 70, 40, 28, 28, '#e8e4d8');
+      drawPixelRect(W - 65, 38, 6, 6, '#d0ccc0');
+      drawPixelRect(W - 58, 48, 4, 4, '#d0ccc0');
+    }
+
+    // Sun (day/dawn/sunset)
+    if (pal.sun) {
+      const sunY = bgPhase === 2 ? 50 : (bgPhase === 1 ? 70 : 90);
+      const sunColor = bgPhase === 3 ? '#ff9944' : (bgPhase === 1 ? '#ffcc66' : '#ffee88');
+      drawPixelRect(W - 80, sunY, 32, 32, sunColor);
+      // Sun rays
+      ctx.fillStyle = sunColor;
+      ctx.globalAlpha = 0.15;
+      for (let i = 0; i < 8; i++) {
+        const angle = (frame * 0.01 + i * 0.785);
+        const rx = W - 64 + Math.cos(angle) * 28;
+        const ry = sunY + 16 + Math.sin(angle) * 28;
+        ctx.fillRect(rx - 1, ry - 1, 3, 3);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Clouds
     for (const c of clouds) {
-      drawPixelRect(c.x, c.y, c.w, c.h, 'rgba(230,228,220,0.12)');
-      drawPixelRect(c.x + 8, c.y - 6, c.w - 16, c.h, 'rgba(230,228,220,0.08)');
+      const cloudColor = bgPhase === 2 ? 'rgba(255,255,255,0.25)' :
+                        bgPhase === 3 ? 'rgba(255,200,150,0.15)' :
+                        'rgba(230,228,220,0.10)';
+      drawPixelRect(c.x, c.y, c.w, c.h, cloudColor);
+      drawPixelRect(c.x + 10, c.y - 5, c.w - 20, c.h, cloudColor.replace(/[0-9.]+\)$/, '0.06)'));
+    }
+
+    // Planes
+    for (const p of planes) {
+      const planeColor = bgPhase === 2 ? '#444' : '#888';
+      // Body
+      drawPixelRect(p.x, p.y, 24, 4, planeColor);
+      // Wings
+      drawPixelRect(p.x + 8, p.y - 3, 8, 10, planeColor);
+      // Tail
+      drawPixelRect(p.x + 20, p.y - 4, 4, 6, planeColor);
+      // Blink light
+      if (frame % 40 < 20) {
+        drawPixelRect(p.x + 22, p.y - 1, 2, 2, '#ff4444');
+      }
+    }
+
+    // City silhouette at bottom
+    const cityColor = bgPhase === 2 ? '#1a1a2e' : '#0a0a12';
+    drawPixelRect(0, H - 30, 60, 30, cityColor);
+    drawPixelRect(60, H - 45, 40, 45, cityColor);
+    drawPixelRect(100, H - 25, 80, 25, cityColor);
+    drawPixelRect(180, H - 55, 35, 55, cityColor);
+    drawPixelRect(215, H - 20, 90, 20, cityColor);
+    drawPixelRect(305, H - 40, 50, 40, cityColor);
+    drawPixelRect(355, H - 28, 70, 28, cityColor);
+    drawPixelRect(425, H - 50, 45, 50, cityColor);
+    drawPixelRect(470, H - 22, 85, 22, cityColor);
+    drawPixelRect(555, H - 38, 50, 38, cityColor);
+    drawPixelRect(605, H - 26, 35, 26, cityColor);
+
+    // Windows in buildings
+    ctx.fillStyle = bgPhase === 0 ? '#ffee88' : (bgPhase === 2 ? '#88ccff' : '#ffaa55');
+    for (let bx = 15; bx < W; bx += 45) {
+      for (let by = H - 50; by < H - 5; by += 12) {
+        if (Math.random() > 0.6) ctx.fillRect(bx, by, 3, 4);
+      }
     }
   }
 
   function drawPlayer() {
     const { x, y, w, h } = player;
-    drawPixelRect(x + 8, y + 10, w - 16, h - 10, '#8b7355');
-    drawPixelRect(x + 4, y, w - 8, 12, '#1a1a1a');
-    drawPixelRect(x, y + 4, w, 6, '#1a1a1a');
-    drawPixelRect(x + 6, y + 10, w - 12, 4, '#2a2a2a');
-    drawPixelRect(x + 6, y + 18, w - 12, 6, '#0d0d0d');
-    drawPixelRect(x + 18, y + 20, 4, 2, '#444');
-    drawPixelRect(x + 6, y + 28, w - 12, 14, '#1a1a1a');
-    drawPixelRect(x + 10, y + 36, w - 20, 6, '#2a2a2a');
-    drawPixelRect(x + 10, y + 42, w - 20, 3, '#c9a227');
+    const skin = '#8b6f4e';
+    const skinDark = '#6b5238';
+    const hair = '#1a1a1a';
+    const hairHighlight = '#2a2a2a';
+    const cap = '#2d2d2d';
+    const capBrim = '#1a1a1a';
+    const shades = '#0d0d0d';
+    const shadesFrame = '#c9a227';
+    const chain = '#ffd700';
+    const shirt = '#3d3d3d';
+
+    // Dreadlocks (back, hanging down)
+    for (let i = 0; i < 5; i++) {
+      const dx = x - 6 + i * 3;
+      const dy = y + 8 + i * 4;
+      const dl = 18 + Math.sin(frame * 0.05 + i) * 3;
+      drawPixelRect(dx, dy, 3, dl, hair);
+    }
+    // Right side dreads
+    for (let i = 0; i < 4; i++) {
+      const dx = x + w + 2 + i * 2;
+      const dy = y + 10 + i * 3;
+      const dl = 14 + Math.sin(frame * 0.04 + i + 2) * 2;
+      drawPixelRect(dx, dy, 3, dl, hair);
+    }
+
+    // Neck
+    drawPixelRect(x + 12, y + 32, w - 24, 10, skinDark);
+
+    // Shirt / shoulders
+    drawPixelRect(x - 4, y + 40, w + 8, 18, shirt);
+    drawPixelRect(x + 4, y + 42, w - 8, 14, '#4a4a4a');
+
+    // Face
+    drawPixelRect(x + 6, y + 8, w - 12, 28, skin);
+
+    // Cap
+    drawPixelRect(x + 4, y, w - 8, 10, cap);
+    drawPixelRect(x, y + 6, w, 6, capBrim);
+    // Cap logo
+    drawPixelRect(x + w/2 - 3, y + 3, 6, 4, '#c9a227');
+
+    // Sunglasses (big, cool)
+    drawPixelRect(x + 7, y + 16, w - 14, 8, shades);
+    drawPixelRect(x + 6, y + 15, w - 12, 2, shadesFrame);
+    drawPixelRect(x + 6, y + 23, w - 12, 2, shadesFrame);
+    // Reflection on shades
+    drawPixelRect(x + 10, y + 17, 6, 2, '#333');
+    drawPixelRect(x + w - 18, y + 18, 4, 2, '#333');
+
+    // Nose
+    drawPixelRect(x + w/2 - 1, y + 24, 2, 4, skinDark);
+
+    // Mouth (slight smile)
+    drawPixelRect(x + 12, y + 30, w - 24, 2, '#4a3728');
+    drawPixelRect(x + 14, y + 29, 4, 2, '#4a3728');
+
+    // Beard
+    drawPixelRect(x + 8, y + 28, w - 16, 10, hair);
+    drawPixelRect(x + 10, y + 36, w - 20, 4, hairHighlight);
+
+    // Gold chain (thick, shiny)
+    drawPixelRect(x + 10, y + 38, w - 20, 4, chain);
+    drawPixelRect(x + 12, y + 39, 4, 2, '#ffee88');
+    drawPixelRect(x + w - 18, y + 39, 4, 2, '#ffee88');
+    // Chain pendant (dollar sign shape)
+    drawPixelRect(x + w/2 - 3, y + 40, 6, 6, chain);
+    drawPixelRect(x + w/2 - 1, y + 41, 2, 4, '#b8860b');
   }
 
   function drawItem(it) {
@@ -357,9 +517,9 @@ function initGame() {
     ctx.textBaseline = 'middle';
     ctx.fillStyle = it.type.color;
     ctx.fillText(it.type.text, it.x, it.y);
-    if (it.type.text === '💎') {
+    if (it.type.text === '\uD83D\uDC8E') {
       ctx.shadowColor = '#7ec8e3';
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 10;
       ctx.fillText(it.type.text, it.x, it.y);
       ctx.shadowBlur = 0;
     }
@@ -379,22 +539,22 @@ function initGame() {
       if (r <= acc) { type = t; break; }
     }
     items.push({
-      x: 20 + Math.random() * (W - 40),
-      y: -20,
+      x: 30 + Math.random() * (W - 60),
+      y: -25,
       type: type,
-      vy: type.speed * speedMult + Math.random() * 0.5
+      vy: type.speed * speedMult + Math.random() * 0.3
     });
   }
 
   function addParticles(x, y, color) {
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
       particles.push({
         x, y,
-        vx: (Math.random() - 0.5) * 4,
-        vy: (Math.random() - 0.5) * 4 - 2,
-        size: 2 + Math.random() * 3,
+        vx: (Math.random() - 0.5) * 5,
+        vy: (Math.random() - 0.5) * 5 - 3,
+        size: 2 + Math.random() * 4,
         color,
-        life: 30
+        life: 40
       });
     }
   }
@@ -404,23 +564,45 @@ function initGame() {
     if (keys.right) player.x += player.speed;
     player.x = Math.max(0, Math.min(W - player.w, player.x));
 
+    // Background phase cycle (every ~15 seconds)
+    bgTimer++;
+    if (bgTimer % 900 === 0) {
+      bgPhase = (bgPhase + 1) % 4;
+    }
+
+    // Clouds
     for (const c of clouds) {
       c.x += c.speed;
-      if (c.x > W) c.x = -c.w;
+      if (c.x > W + 50) { c.x = -c.w - 20; c.y = 20 + Math.random() * (H / 3); }
     }
 
+    // Planes
+    for (const p of planes) {
+      p.x += p.speed;
+      if (p.x > W + 40) {
+        p.x = -60 - Math.random() * 100;
+        p.y = 25 + Math.random() * 90;
+      }
+    }
+
+    // Spawn items
     frame++;
-    if (frame % Math.max(20, Math.floor(spawnRate)) === 0) spawnItem();
-    if (frame % 300 === 0) {
-      spawnRate = Math.max(20, spawnRate - 4);
-      speedMult += 0.08;
+    if (frame % Math.max(35, Math.floor(spawnRate)) === 0) spawnItem();
+    if (frame % 400 === 0) {
+      spawnRate = Math.max(30, spawnRate - 3);
+      speedMult += 0.04;
     }
 
+    // Items
     for (let i = items.length - 1; i >= 0; i--) {
       const it = items[i];
       it.y += it.vy;
-      if (it.x > player.x && it.x < player.x + player.w &&
-          it.y > player.y && it.y < player.y + player.h) {
+      // Slight wobble
+      it.x += Math.sin(frame * 0.03 + i) * 0.3;
+      if (
+        it.x > player.x + 4 && it.x < player.x + player.w - 4 &&
+        it.y > player.y + 10 && it.y < player.y + player.h
+      ) {
         score += it.type.score;
         scoreEl.textContent = score;
         addParticles(it.x, it.y, it.type.color);
@@ -430,10 +612,11 @@ function initGame() {
       if (it.y > H + 20) items.splice(i, 1);
     }
 
+    // Particles
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
       p.x += p.vx; p.y += p.vy;
-      p.vy += 0.15;
+      p.vy += 0.12;
       p.life--;
       if (p.life <= 0) particles.splice(i, 1);
     }
@@ -454,10 +637,10 @@ function initGame() {
   }
 
   function startGame() {
-    score = 0; timeLeft = 60; frame = 0;
+    score = 0; timeLeft = 60; frame = 0; bgTimer = 0; bgPhase = 0;
     items = []; particles = [];
-    spawnRate = 60; speedMult = 1;
-    player.x = W / 2 - 20;
+    spawnRate = 90; speedMult = 0.55;
+    player.x = W / 2 - 22;
     scoreEl.textContent = '0';
     timerEl.textContent = '60';
     startOverlay.classList.add('hidden');
