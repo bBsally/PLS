@@ -289,43 +289,63 @@ function initGame() {
   const W = 640, H = 480;
   let running = false, score = 0, timeLeft = 60, frame = 0;
   let items = [], particles = [], clouds = [], planes = [];
-  let spawnRate = 90, speedMult = 0.55;
+  let spawnRate = 100, speedMult = 0.45;
   let keys = { left: false, right: false };
   let animId, timerId;
-  let bgPhase = 0; // 0=night, 1=dawn, 2=day, 3=sunset
-  let bgTimer = 0;
+  let bgCycle = 0; // 0..1 continuous cycle
+  let busted = false, bustedFrame = 0;
+  let copY = -60;
+  let shakeX = 0, shakeY = 0;
 
-  // Player (rapper head with dreads, shades, gold chain)
-  const player = { x: W / 2 - 22, y: H - 62, w: 44, h: 55, speed: 4.2 };
+  // Player (pixel head with dreads, beanie, shades)
+  const player = { x: W / 2 - 20, y: H - 52, w: 40, h: 42, speed: 4 };
 
-  // Item types - MUCH SLOWER
+  // Item types - VERY SLOW
   const itemTypes = [
-    { text: '$', score: 10, color: '#617858', chance: 0.35, size: 18, speed: 0.9 },
-    { text: 'PL', score: 10, color: '#4d5c47', chance: 0.30, size: 16, speed: 1.0 },
-    { text: '\uD83D\uDD0A', score: 15, color: '#d4a574', chance: 0.18, size: 20, speed: 1.1 },
-    { text: '\uD83C\uDFA4', score: 30, color: '#c4b8ad', chance: 0.12, size: 20, speed: 1.3 },
-    { text: '\uD83D\uDC8E', score: 50, color: '#7ec8e3', chance: 0.05, size: 20, speed: 1.5 },
+    { text: '$', score: 10, color: '#617858', chance: 0.35, size: 18, speed: 0.7 },
+    { text: 'PL', score: 10, color: '#4d5c47', chance: 0.30, size: 16, speed: 0.8 },
+    { text: '\uD83D\uDD0A', score: 15, color: '#d4a574', chance: 0.18, size: 20, speed: 0.9 },
+    { text: '\uD83C\uDFA4', score: 30, color: '#c4b8ad', chance: 0.12, size: 20, speed: 1.0 },
+    { text: '\uD83D\uDC8E', score: 50, color: '#7ec8e3', chance: 0.05, size: 20, speed: 1.1 },
   ];
 
-  // Init clouds
-  for (let i = 0; i < 5; i++) {
-    clouds.push({
-      x: Math.random() * W,
-      y: 20 + Math.random() * (H / 3),
-      w: 50 + Math.random() * 70,
-      h: 12 + Math.random() * 16,
-      speed: 0.15 + Math.random() * 0.25
-    });
+  // Palettes for smooth sky cycle
+  const palettes = [
+    { top: [8, 6, 18], bot: [20, 15, 35], starA: 0.9, sun: false, moon: true, win: '#ffee88' },
+    { top: [35, 25, 55], bot: [160, 90, 60], starA: 0.3, sun: true, moon: false, win: '#ffcc88' },
+    { top: [60, 130, 195], bot: [170, 205, 235], starA: 0, sun: true, moon: false, win: '#88ccff' },
+    { top: [50, 35, 75], bot: [220, 120, 55], starA: 0.1, sun: true, moon: false, win: '#ffaa55' },
+  ];
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function lerpColor(c1, c2, t) {
+    return [Math.round(lerp(c1[0], c2[0], t)), Math.round(lerp(c1[1], c2[1], t)), Math.round(lerp(c1[2], c2[2], t))];
   }
 
+  function getCurrentPalette() {
+    const phase = (bgCycle * 4) % 4;
+    const idx = Math.floor(phase);
+    const next = (idx + 1) % 4;
+    const t = phase - idx;
+    const p1 = palettes[idx], p2 = palettes[next];
+    return {
+      top: lerpColor(p1.top, p2.top, t),
+      bot: lerpColor(p1.bot, p2.bot, t),
+      starA: lerp(p1.starA, p2.starA, t),
+      sun: p1.sun || (t > 0.5 && p2.sun),
+      moon: p1.moon && t < 0.5,
+      win: t < 0.5 ? p1.win : p2.win,
+      phase: idx
+    };
+  }
+
+  // Init clouds
+  for (let i = 0; i < 6; i++) {
+    clouds.push({ x: Math.random() * W, y: 15 + Math.random() * (H / 3), w: 45 + Math.random() * 75, h: 10 + Math.random() * 14, speed: 0.12 + Math.random() * 0.2 });
+  }
   // Init planes
   for (let i = 0; i < 2; i++) {
-    planes.push({
-      x: -60 - Math.random() * 200,
-      y: 30 + Math.random() * 80,
-      speed: 0.8 + Math.random() * 0.6,
-      size: 1
-    });
+    planes.push({ x: -80 - Math.random() * 300, y: 25 + Math.random() * 70, speed: 0.6 + Math.random() * 0.5 });
   }
 
   function drawPixelRect(x, y, w, h, color) {
@@ -333,60 +353,67 @@ function initGame() {
     ctx.fillRect(Math.floor(x), Math.floor(y), w, h);
   }
 
-  function getSkyColors(phase) {
-    // phase: 0=night, 1=dawn, 2=day, 3=sunset
-    const palettes = [
-      { top: [10, 8, 22], bot: [25, 20, 45], starAlpha: 0.8, sun: false, moon: true },
-      { top: [40, 30, 60], bot: [180, 100, 70], starAlpha: 0.2, sun: true, moon: false },
-      { top: [70, 140, 200], bot: [180, 210, 235], starAlpha: 0, sun: true, moon: false },
-      { top: [60, 40, 80], bot: [230, 130, 60], starAlpha: 0.15, sun: true, moon: false },
-    ];
-    return palettes[phase];
-  }
-
   function drawSky() {
-    const pal = getSkyColors(bgPhase);
-    // Pixel sky gradient
-    for (let y = 0; y < H; y += 3) {
+    const pal = getCurrentPalette();
+    // Smooth pixel sky
+    for (let y = 0; y < H; y += 2) {
       const t = y / H;
-      const r = Math.floor(pal.top[0] + t * (pal.bot[0] - pal.top[0]));
-      const g = Math.floor(pal.top[1] + t * (pal.bot[1] - pal.top[1]));
-      const b = Math.floor(pal.top[2] + t * (pal.bot[2] - pal.top[2]));
-      drawPixelRect(0, y, W, 3, `rgb(${r},${g},${b})`);
+      const r = Math.round(pal.top[0] + t * (pal.bot[0] - pal.top[0]));
+      const g = Math.round(pal.top[1] + t * (pal.bot[1] - pal.top[1]));
+      const b = Math.round(pal.top[2] + t * (pal.bot[2] - pal.top[2]));
+      drawPixelRect(0, y, W, 2, `rgb(${r},${g},${b})`);
     }
 
-    // Stars (only at night/dawn)
-    if (pal.starAlpha > 0) {
-      ctx.fillStyle = `rgba(255,255,255,${pal.starAlpha})`;
-      for (let i = 0; i < 25; i++) {
+    // Stars with twinkle
+    if (pal.starA > 0.05) {
+      for (let i = 0; i < 30; i++) {
         const sx = ((i * 137) % W);
-        const sy = ((i * 53) % (H / 2));
-        const twinkle = Math.sin(frame * 0.05 + i) * 0.4 + 0.6;
-        ctx.globalAlpha = twinkle * pal.starAlpha;
+        const sy = ((i * 53) % (H / 2 + 40));
+        const twinkle = Math.sin(frame * 0.04 + i * 0.7) * 0.35 + 0.65;
+        const alpha = twinkle * pal.starA;
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
         ctx.fillRect(sx, sy, 2, 2);
       }
-      ctx.globalAlpha = 1;
     }
 
-    // Moon (night)
+    // Moon
     if (pal.moon) {
-      drawPixelRect(W - 70, 40, 28, 28, '#e8e4d8');
-      drawPixelRect(W - 65, 38, 6, 6, '#d0ccc0');
-      drawPixelRect(W - 58, 48, 4, 4, '#d0ccc0');
+      const mx = W - 75, my = 45;
+      drawPixelRect(mx, my, 26, 26, '#e8e4d8');
+      drawPixelRect(mx + 4, my + 3, 5, 5, '#d0ccc0');
+      drawPixelRect(mx + 14, my + 10, 4, 4, '#d0ccc0');
+      // Moon glow
+      ctx.fillStyle = 'rgba(232,228,216,0.06)';
+      ctx.fillRect(mx - 8, my - 8, 42, 42);
     }
 
-    // Sun (day/dawn/sunset)
+    // Sun with arc movement
     if (pal.sun) {
-      const sunY = bgPhase === 2 ? 50 : (bgPhase === 1 ? 70 : 90);
-      const sunColor = bgPhase === 3 ? '#ff9944' : (bgPhase === 1 ? '#ffcc66' : '#ffee88');
-      drawPixelRect(W - 80, sunY, 32, 32, sunColor);
-      // Sun rays
+      const sunProgress = (bgCycle * 4) % 4;
+      let sunAngle;
+      if (sunProgress < 1) sunAngle = 0.2 + sunProgress * 0.3; // dawn rising
+      else if (sunProgress < 2) sunAngle = 0.5 + (sunProgress - 1) * 0.4; // day high
+      else if (sunProgress < 3) sunAngle = 0.9 + (sunProgress - 2) * 0.3; // sunset
+      else sunAngle = 1.2 + (sunProgress - 3) * 0.2; // night hiding
+      const sunX = W - 100 + Math.cos(sunAngle) * 30;
+      const sunY = 30 + Math.sin(sunAngle) * 25;
+      const sunColor = pal.phase === 3 ? '#ff8844' : (pal.phase === 1 ? '#ffcc55' : '#ffee88');
+      // Glow
       ctx.fillStyle = sunColor;
+      ctx.globalAlpha = 0.08;
+      ctx.fillRect(sunX - 15, sunY - 15, 56, 56);
       ctx.globalAlpha = 0.15;
-      for (let i = 0; i < 8; i++) {
-        const angle = (frame * 0.01 + i * 0.785);
-        const rx = W - 64 + Math.cos(angle) * 28;
-        const ry = sunY + 16 + Math.sin(angle) * 28;
+      ctx.fillRect(sunX - 8, sunY - 8, 42, 42);
+      ctx.globalAlpha = 1;
+      // Sun body
+      drawPixelRect(sunX, sunY, 26, 26, sunColor);
+      // Rays
+      ctx.fillStyle = sunColor;
+      for (let i = 0; i < 12; i++) {
+        const angle = frame * 0.008 + i * 0.524;
+        const rx = sunX + 13 + Math.cos(angle) * 22;
+        const ry = sunY + 13 + Math.sin(angle) * 22;
+        ctx.globalAlpha = 0.12 + Math.sin(frame * 0.03 + i) * 0.06;
         ctx.fillRect(rx - 1, ry - 1, 3, 3);
       }
       ctx.globalAlpha = 1;
@@ -394,121 +421,143 @@ function initGame() {
 
     // Clouds
     for (const c of clouds) {
-      const cloudColor = bgPhase === 2 ? 'rgba(255,255,255,0.25)' :
-                        bgPhase === 3 ? 'rgba(255,200,150,0.15)' :
-                        'rgba(230,228,220,0.10)';
+      const cloudColor = pal.phase === 2 ? 'rgba(255,255,255,0.22)' : pal.phase === 3 ? 'rgba(255,180,120,0.14)' : 'rgba(220,218,210,0.09)';
       drawPixelRect(c.x, c.y, c.w, c.h, cloudColor);
-      drawPixelRect(c.x + 10, c.y - 5, c.w - 20, c.h, cloudColor.replace(/[0-9.]+\)$/, '0.06)'));
+      drawPixelRect(c.x + 12, c.y - 4, c.w - 24, c.h, cloudColor.replace(/[0-9.]+\)$/, '0.05)'));
     }
 
     // Planes
     for (const p of planes) {
-      const planeColor = bgPhase === 2 ? '#444' : '#888';
-      // Body
-      drawPixelRect(p.x, p.y, 24, 4, planeColor);
-      // Wings
-      drawPixelRect(p.x + 8, p.y - 3, 8, 10, planeColor);
-      // Tail
-      drawPixelRect(p.x + 20, p.y - 4, 4, 6, planeColor);
-      // Blink light
-      if (frame % 40 < 20) {
-        drawPixelRect(p.x + 22, p.y - 1, 2, 2, '#ff4444');
-      }
+      const pc = pal.phase === 2 ? '#555' : '#999';
+      drawPixelRect(p.x, p.y, 22, 3, pc);
+      drawPixelRect(p.x + 7, p.y - 3, 8, 9, pc);
+      drawPixelRect(p.x + 18, p.y - 3, 3, 5, pc);
+      if (frame % 50 < 25) drawPixelRect(p.x + 20, p.y - 1, 2, 2, '#ff3333');
     }
 
-    // City silhouette at bottom
-    const cityColor = bgPhase === 2 ? '#1a1a2e' : '#0a0a12';
-    drawPixelRect(0, H - 30, 60, 30, cityColor);
-    drawPixelRect(60, H - 45, 40, 45, cityColor);
-    drawPixelRect(100, H - 25, 80, 25, cityColor);
-    drawPixelRect(180, H - 55, 35, 55, cityColor);
-    drawPixelRect(215, H - 20, 90, 20, cityColor);
-    drawPixelRect(305, H - 40, 50, 40, cityColor);
-    drawPixelRect(355, H - 28, 70, 28, cityColor);
-    drawPixelRect(425, H - 50, 45, 50, cityColor);
-    drawPixelRect(470, H - 22, 85, 22, cityColor);
-    drawPixelRect(555, H - 38, 50, 38, cityColor);
-    drawPixelRect(605, H - 26, 35, 26, cityColor);
-
-    // Windows in buildings
-    ctx.fillStyle = bgPhase === 0 ? '#ffee88' : (bgPhase === 2 ? '#88ccff' : '#ffaa55');
-    for (let bx = 15; bx < W; bx += 45) {
-      for (let by = H - 50; by < H - 5; by += 12) {
-        if (Math.random() > 0.6) ctx.fillRect(bx, by, 3, 4);
+    // City skyline
+    const cityColor = pal.phase === 2 ? '#1a1a2e' : '#080810';
+    const buildings = [
+      [0, 28], [55, 42], [95, 22], [140, 35], [185, 18],
+      [220, 30], [265, 24], [310, 38], [360, 20], [405, 32],
+      [450, 26], [495, 40], [540, 22], [585, 34], [625, 28]
+    ];
+    for (const [bx, bh] of buildings) {
+      drawPixelRect(bx, H - bh, 35, bh, cityColor);
+    }
+    // Windows
+    ctx.fillStyle = pal.win;
+    for (let wx = 10; wx < W; wx += 38) {
+      for (let wy = H - 45; wy < H - 5; wy += 10) {
+        if ((wx * 7 + wy * 3) % 11 < 5) ctx.fillRect(wx, wy, 3, 4);
       }
     }
   }
 
   function drawPlayer() {
     const { x, y, w, h } = player;
-    const skin = '#8b6f4e';
-    const skinDark = '#6b5238';
+    const skin = '#d4a574';
+    const skinDark = '#b0865a';
     const hair = '#1a1a1a';
-    const hairHighlight = '#2a2a2a';
-    const cap = '#2d2d2d';
-    const capBrim = '#1a1a1a';
-    const shades = '#0d0d0d';
-    const shadesFrame = '#c9a227';
+    const beanie = '#e85d3e'; // orange beanie
+    const beanieDark = '#c44a30';
+    const shades = '#0a0a0a';
+    const shadesFrame = '#ffd700';
     const chain = '#ffd700';
-    const shirt = '#3d3d3d';
 
-    // Dreadlocks (back, hanging down)
-    for (let i = 0; i < 5; i++) {
-      const dx = x - 6 + i * 3;
-      const dy = y + 8 + i * 4;
-      const dl = 18 + Math.sin(frame * 0.05 + i) * 3;
-      drawPixelRect(dx, dy, 3, dl, hair);
-    }
-    // Right side dreads
+    // Dreads left
     for (let i = 0; i < 4; i++) {
-      const dx = x + w + 2 + i * 2;
-      const dy = y + 10 + i * 3;
-      const dl = 14 + Math.sin(frame * 0.04 + i + 2) * 2;
+      const dx = x - 5 + i * 2;
+      const dy = y + 14 + i * 3;
+      const dl = 14 + Math.sin(frame * 0.04 + i) * 2;
       drawPixelRect(dx, dy, 3, dl, hair);
     }
-
-    // Neck
-    drawPixelRect(x + 12, y + 32, w - 24, 10, skinDark);
-
-    // Shirt / shoulders
-    drawPixelRect(x - 4, y + 40, w + 8, 18, shirt);
-    drawPixelRect(x + 4, y + 42, w - 8, 14, '#4a4a4a');
+    // Dreads right
+    for (let i = 0; i < 4; i++) {
+      const dx = x + w + 1 + i * 2;
+      const dy = y + 14 + i * 3;
+      const dl = 14 + Math.sin(frame * 0.04 + i + 3) * 2;
+      drawPixelRect(dx, dy, 3, dl, hair);
+    }
 
     // Face
-    drawPixelRect(x + 6, y + 8, w - 12, 28, skin);
+    drawPixelRect(x + 4, y + 10, w - 8, 22, skin);
+    // Chin shadow
+    drawPixelRect(x + 6, y + 30, w - 12, 4, skinDark);
 
-    // Cap
-    drawPixelRect(x + 4, y, w - 8, 10, cap);
-    drawPixelRect(x, y + 6, w, 6, capBrim);
-    // Cap logo
-    drawPixelRect(x + w/2 - 3, y + 3, 6, 4, '#c9a227');
+    // Beanie (orange, puffy)
+    drawPixelRect(x + 2, y, w - 4, 12, beanie);
+    drawPixelRect(x, y + 3, w, 8, beanie);
+    drawPixelRect(x + 4, y - 3, w - 8, 6, beanieDark);
+    // Beanie fold
+    drawPixelRect(x + 2, y + 8, w - 4, 4, beanieDark);
+    // Beanie logo (small green square like in image)
+    drawPixelRect(x + w/2 - 3, y + 4, 6, 5, '#4a8c5a');
+    drawPixelRect(x + w/2 - 1, y + 5, 2, 3, '#3a7c4a');
 
-    // Sunglasses (big, cool)
-    drawPixelRect(x + 7, y + 16, w - 14, 8, shades);
-    drawPixelRect(x + 6, y + 15, w - 12, 2, shadesFrame);
-    drawPixelRect(x + 6, y + 23, w - 12, 2, shadesFrame);
-    // Reflection on shades
-    drawPixelRect(x + 10, y + 17, 6, 2, '#333');
-    drawPixelRect(x + w - 18, y + 18, 4, 2, '#333');
+    // Sunglasses (big, gold frame)
+    drawPixelRect(x + 5, y + 16, w - 10, 9, shades);
+    drawPixelRect(x + 4, y + 15, w - 8, 2, shadesFrame);
+    drawPixelRect(x + 4, y + 24, w - 8, 2, shadesFrame);
+    // Bridge
+    drawPixelRect(x + w/2 - 2, y + 18, 4, 4, shadesFrame);
+    // Reflection
+    drawPixelRect(x + 8, y + 17, 5, 2, '#222');
+    drawPixelRect(x + w - 15, y + 18, 4, 2, '#222');
 
     // Nose
-    drawPixelRect(x + w/2 - 1, y + 24, 2, 4, skinDark);
+    drawPixelRect(x + w/2 - 1, y + 24, 2, 3, skinDark);
 
     // Mouth (slight smile)
-    drawPixelRect(x + 12, y + 30, w - 24, 2, '#4a3728');
-    drawPixelRect(x + 14, y + 29, 4, 2, '#4a3728');
+    drawPixelRect(x + 10, y + 29, w - 20, 2, '#6b4226');
+    drawPixelRect(x + 12, y + 28, 3, 2, '#6b4226');
 
-    // Beard
-    drawPixelRect(x + 8, y + 28, w - 16, 10, hair);
-    drawPixelRect(x + 10, y + 36, w - 20, 4, hairHighlight);
+    // Small beard stubble
+    drawPixelRect(x + 8, y + 30, w - 16, 3, hair);
 
-    // Gold chain (thick, shiny)
-    drawPixelRect(x + 10, y + 38, w - 20, 4, chain);
-    drawPixelRect(x + 12, y + 39, 4, 2, '#ffee88');
-    drawPixelRect(x + w - 18, y + 39, 4, 2, '#ffee88');
-    // Chain pendant (dollar sign shape)
-    drawPixelRect(x + w/2 - 3, y + 40, 6, 6, chain);
-    drawPixelRect(x + w/2 - 1, y + 41, 2, 4, '#b8860b');
+    // Gold chain
+    drawPixelRect(x + 10, y + 34, w - 20, 3, chain);
+    drawPixelRect(x + 14, y + 35, 3, 2, '#ffee88');
+    drawPixelRect(x + w - 19, y + 35, 3, 2, '#ffee88');
+  }
+
+  function drawCop() {
+    // Police head descending from top to catch player
+    const cx = player.x + player.w/2 - 18;
+    const cy = copY;
+    // Police hat (blue)
+    drawPixelRect(cx + 4, cy, 28, 10, '#1a3a6b');
+    drawPixelRect(cx, cy + 6, 36, 5, '#1a3a6b');
+    // Hat badge
+    drawPixelRect(cx + 14, cy + 3, 8, 5, '#ffd700');
+    // Face
+    drawPixelRect(cx + 6, cy + 10, 24, 18, '#d4a574');
+    // Sunglasses
+    drawPixelRect(cx + 7, cy + 14, 22, 6, '#0a0a0a');
+    // Mustache
+    drawPixelRect(cx + 10, cy + 22, 16, 3, '#2a2a2a');
+    // Uniform collar
+    drawPixelRect(cx + 4, cy + 26, 28, 6, '#1a3a6b');
+    drawPixelRect(cx + 12, cy + 28, 12, 3, '#ffd700');
+  }
+
+  function drawPoliceLights() {
+    const flashSpeed = 8;
+    const isRed = Math.floor(frame / flashSpeed) % 2 === 0;
+    // Top bar lights
+    for (let i = 0; i < 6; i++) {
+      const lx = 60 + i * 90;
+      const color = (i % 2 === 0) ? (isRed ? '#ff0000' : '#330000') : (isRed ? '#000033' : '#0000ff');
+      ctx.fillStyle = color;
+      ctx.fillRect(lx, 4, 20, 8);
+      // Glow
+      ctx.globalAlpha = isRed ? 0.3 : 0.15;
+      ctx.fillRect(lx - 4, 0, 28, 16);
+    }
+    ctx.globalAlpha = 1;
+    // Side flashes
+    ctx.fillStyle = isRed ? 'rgba(255,0,0,0.08)' : 'rgba(0,0,255,0.08)';
+    ctx.fillRect(0, 0, W, H);
   }
 
   function drawItem(it) {
@@ -519,7 +568,7 @@ function initGame() {
     ctx.fillText(it.type.text, it.x, it.y);
     if (it.type.text === '\uD83D\uDC8E') {
       ctx.shadowColor = '#7ec8e3';
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 12;
       ctx.fillText(it.type.text, it.x, it.y);
       ctx.shadowBlur = 0;
     }
@@ -538,71 +587,78 @@ function initGame() {
       acc += t.chance;
       if (r <= acc) { type = t; break; }
     }
-    items.push({
-      x: 30 + Math.random() * (W - 60),
-      y: -25,
-      type: type,
-      vy: type.speed * speedMult + Math.random() * 0.3
-    });
+    items.push({ x: 30 + Math.random() * (W - 60), y: -25, type: type, vy: type.speed * speedMult + Math.random() * 0.2 });
   }
 
   function addParticles(x, y, color) {
     for (let i = 0; i < 10; i++) {
-      particles.push({
-        x, y,
-        vx: (Math.random() - 0.5) * 5,
-        vy: (Math.random() - 0.5) * 5 - 3,
-        size: 2 + Math.random() * 4,
-        color,
-        life: 40
-      });
+      particles.push({ x, y, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5 - 3, size: 2 + Math.random() * 4, color, life: 40 });
     }
   }
 
+  function triggerBusted() {
+    busted = true;
+    bustedFrame = 0;
+    copY = -60;
+    items = [];
+  }
+
   function update() {
+    if (busted) {
+      bustedFrame++;
+      // Shake effect
+      shakeX = Math.sin(bustedFrame * 0.8) * 3;
+      shakeY = Math.cos(bustedFrame * 0.6) * 2;
+      // Cop descends
+      if (copY < player.y - 20) copY += 2.5;
+      else {
+        // Cop caught player - end game
+        if (bustedFrame > 120) {
+          endGame(true);
+          return;
+        }
+      }
+      frame++;
+      bgCycle += 0.0003;
+      return;
+    }
+
     if (keys.left) player.x -= player.speed;
     if (keys.right) player.x += player.speed;
     player.x = Math.max(0, Math.min(W - player.w, player.x));
 
-    // Background phase cycle (every ~15 seconds)
-    bgTimer++;
-    if (bgTimer % 900 === 0) {
-      bgPhase = (bgPhase + 1) % 4;
-    }
+    // Background cycle - very smooth
+    bgCycle += 0.00025;
 
     // Clouds
     for (const c of clouds) {
       c.x += c.speed;
-      if (c.x > W + 50) { c.x = -c.w - 20; c.y = 20 + Math.random() * (H / 3); }
+      if (c.x > W + 60) { c.x = -c.w - 20; c.y = 15 + Math.random() * (H / 3); }
     }
-
     // Planes
     for (const p of planes) {
       p.x += p.speed;
-      if (p.x > W + 40) {
-        p.x = -60 - Math.random() * 100;
-        p.y = 25 + Math.random() * 90;
-      }
+      if (p.x > W + 50) { p.x = -80 - Math.random() * 150; p.y = 25 + Math.random() * 70; }
     }
 
-    // Spawn items
+    // Check busted condition at 30 seconds
+    if (timeLeft === 30 && score < 400 && !busted) {
+      triggerBusted();
+      return;
+    }
+
     frame++;
-    if (frame % Math.max(35, Math.floor(spawnRate)) === 0) spawnItem();
-    if (frame % 400 === 0) {
-      spawnRate = Math.max(30, spawnRate - 3);
-      speedMult += 0.04;
+    if (!busted && frame % Math.max(40, Math.floor(spawnRate)) === 0) spawnItem();
+    if (frame % 500 === 0) {
+      spawnRate = Math.max(30, spawnRate - 4);
+      speedMult += 0.03;
     }
 
-    // Items
     for (let i = items.length - 1; i >= 0; i--) {
       const it = items[i];
       it.y += it.vy;
-      // Slight wobble
-      it.x += Math.sin(frame * 0.03 + i) * 0.3;
-      if (
-        it.x > player.x + 4 && it.x < player.x + player.w - 4 &&
-        it.y > player.y + 10 && it.y < player.y + player.h
-      ) {
+      it.x += Math.sin(frame * 0.025 + i) * 0.3;
+      if (it.x > player.x + 4 && it.x < player.x + player.w - 4 && it.y > player.y + 8 && it.y < player.y + player.h) {
         score += it.type.score;
         scoreEl.textContent = score;
         addParticles(it.x, it.y, it.type.color);
@@ -612,7 +668,6 @@ function initGame() {
       if (it.y > H + 20) items.splice(i, 1);
     }
 
-    // Particles
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
       p.x += p.vx; p.y += p.vy;
@@ -623,11 +678,30 @@ function initGame() {
   }
 
   function draw() {
-    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    if (busted) {
+      ctx.translate(shakeX, shakeY);
+    }
+    ctx.clearRect(-10, -10, W + 20, H + 20);
     drawSky();
     for (const it of items) drawItem(it);
     drawPlayer();
+    if (busted) {
+      drawPoliceLights();
+      drawCop();
+      // BUSTED text
+      if (bustedFrame > 40) {
+        ctx.font = 'bold 42px "Instrument Serif", Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ff0000';
+        ctx.fillText('BUSTED', W / 2, H / 2 - 30);
+        ctx.font = '14px "DM Mono", monospace';
+        ctx.fillStyle = '#ff6666';
+        ctx.fillText('not enough points...', W / 2, H / 2 + 10);
+      }
+    }
     drawParticles();
+    ctx.restore();
   }
 
   function loop() {
@@ -637,10 +711,10 @@ function initGame() {
   }
 
   function startGame() {
-    score = 0; timeLeft = 60; frame = 0; bgTimer = 0; bgPhase = 0;
-    items = []; particles = [];
-    spawnRate = 90; speedMult = 0.55;
-    player.x = W / 2 - 22;
+    score = 0; timeLeft = 60; frame = 0; bgCycle = 0;
+    items = []; particles = []; busted = false; bustedFrame = 0; copY = -60;
+    spawnRate = 100; speedMult = 0.45;
+    player.x = W / 2 - 20;
     scoreEl.textContent = '0';
     timerEl.textContent = '60';
     startOverlay.classList.add('hidden');
@@ -648,17 +722,22 @@ function initGame() {
     running = true;
     loop();
     timerId = setInterval(() => {
+      if (busted) return;
       timeLeft--;
       timerEl.textContent = timeLeft;
-      if (timeLeft <= 0) endGame();
+      if (timeLeft <= 0) endGame(false);
     }, 1000);
   }
 
-  function endGame() {
+  function endGame(isBusted) {
     running = false;
     cancelAnimationFrame(animId);
     clearInterval(timerId);
-    finalScoreEl.textContent = 'score: ' + score;
+    if (isBusted) {
+      finalScoreEl.innerHTML = 'BUSTED<br><span style="font-size:12px;color:#ff6666;">score: ' + score + '</span>';
+    } else {
+      finalScoreEl.textContent = 'score: ' + score;
+    }
     overOverlay.classList.remove('hidden');
     const prev = parseInt(localStorage.getItem('pls_highscore') || '0');
     if (score > prev) localStorage.setItem('pls_highscore', String(score));
