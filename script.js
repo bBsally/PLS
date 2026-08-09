@@ -5,14 +5,12 @@ const closeButton = document.querySelector('.close');
 function bindBetaForm() {
  const form = content.querySelector('.beta-form');
  if (!form) return;
-
  form.addEventListener('submit', async (event) => {
  event.preventDefault();
  const status = form.querySelector('.form-status');
  const button = form.querySelector('button');
  button.disabled = true;
  status.textContent = 'sending…';
-
  try {
  const response = await fetch(form.action, { method: 'POST', body: new FormData(form) });
  const result = await response.json();
@@ -48,8 +46,7 @@ document.querySelector('.sound-toggle').addEventListener('click', (event) => {
  event.currentTarget.textContent = on ? 'sound: off' : 'sound: on';
 });
 
-/* ===== ADDED: Toast + Store support ===== */
-
+/* ===== TOAST ===== */
 function showToast(msg) {
  let t = document.querySelector('.toast');
  if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
@@ -58,7 +55,6 @@ function showToast(msg) {
  setTimeout(() => t.classList.remove('show'), 2800);
 }
 
-// Enhanced beta form with toast
 const _origBindBeta = bindBetaForm;
 bindBetaForm = function() {
  const form = content.querySelector('.beta-form');
@@ -88,7 +84,7 @@ bindBetaForm = function() {
  });
 };
 
-/* ===== FETCH WAITLIST COUNT ===== */
+/* ===== WAITLIST COUNT ===== */
 function updateCount(type) {
  fetch('/api/count?type=' + (type || 'beta') + '&t=' + Date.now())
  .then(r => r.json())
@@ -101,7 +97,7 @@ function updateCount(type) {
 }
 updateCount('beta');
 
-/* ===== OPEN STORE FROM PLUGIN ===== */
+/* ===== OPEN STORE ===== */
 document.addEventListener('click', (e) => {
  const btn = e.target.closest('[data-open-store]');
  if (!btn) return;
@@ -110,7 +106,7 @@ document.addEventListener('click', (e) => {
  if (storeFolder) storeFolder.click();
 });
 
-/* ===== FETCH CURRENT STATUS ===== */
+/* ===== STATUS ===== */
 const ICONS = {
  gaming: '',
  music: '',
@@ -142,10 +138,9 @@ function loadStatus() {
 loadStatus();
 setInterval(loadStatus, 30000);
 
-/* ===== FOLDER PARTICLE EFFECT ($ / PL) ===== */
+/* ===== FOLDER PARTICLES ===== */
 document.querySelectorAll('.folder').forEach(folder => {
  let interval = null;
-
  function spawnParticle() {
  const el = document.createElement('span');
  const isPL = Math.random() > 0.5;
@@ -158,13 +153,11 @@ document.querySelectorAll('.folder').forEach(folder => {
  folder.appendChild(el);
  setTimeout(() => el.remove(), 1800);
  }
-
  folder.addEventListener('mouseenter', () => {
  if (interval) return;
  spawnParticle();
  interval = setInterval(spawnParticle, 85);
  });
-
  folder.addEventListener('mouseleave', () => {
  clearInterval(interval);
  interval = null;
@@ -175,13 +168,11 @@ document.querySelectorAll('.folder').forEach(folder => {
 function initCarousel() {
  const carousel = document.getElementById('plugin-carousel');
  if (!carousel) return;
-
  const track = carousel.querySelector('.carousel-track');
  const slides = carousel.querySelectorAll('.carousel-slide');
  const dotsContainer = carousel.querySelector('.carousel-dots');
  const prevBtn = carousel.querySelector('.carousel-prev');
  const nextBtn = carousel.querySelector('.carousel-next');
-
  if (!slides.length) return;
 
  let current = 0;
@@ -215,7 +206,6 @@ function initCarousel() {
  prevBtn.addEventListener('click', () => goTo(current - 1));
  nextBtn.addEventListener('click', () => goTo(current + 1));
 
- // Mouse drag
  track.addEventListener('mousedown', (e) => {
  isDragging = true;
  startX = e.pageX;
@@ -242,7 +232,6 @@ function initCarousel() {
  else goTo(current);
  });
 
- // Touch drag
  track.addEventListener('touchstart', (e) => {
  isDragging = true;
  startX = e.touches[0].pageX;
@@ -271,6 +260,12 @@ function initCarousel() {
 }
 
 /* ===== AUDIO ===== */
+let audioCtx = null;
+let menuMusic = null;
+let gameMusic = null;
+let volMusic = 0.7;
+let volSfx = 0.8;
+
 function initAudio() {
  if (!audioCtx) {
  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
@@ -382,10 +377,10 @@ function initGame() {
  const W = 640, H = 480;
  let running = false, score = 0, timeLeft = 60, frame = 0;
  let items = [], particles = [], clouds = [], planes = [];
- let spawnRate = 45, speedMult = 1.0;
+ let spawnRate = 42, speedMult = 1.0;
  let keys = { left: false, right: false };
  let animId, timerId;
- let bgCycle = 0; // 0..1 continuous cycle
+ let bgCycle = 0;
  let busted = false, bustedFrame = 0;
  let copY = -60;
  let shakeX = 0, shakeY = 0;
@@ -403,26 +398,14 @@ function initGame() {
  const MAX_LIVES = 4;
  const MISSES_PER_LIFE = 5;
 
- // Audio globals (declared in audio block)
- // let audioCtx, menuMusic, gameMusic, volMusic, volSfx;
-
  // UFO 420 event
  let ufoEvent = { active: false, triggered: false, timer: 0, x: -80, y: -50, beamAlpha: 0, abductees: [], rot: 0, beamParticles: [] };
 
- // Player (pixel head with dreads, beanie, shades)
  const player = { x: W / 2 - 20, y: H - 52, w: 40, h: 42, speed: 5 };
 
- // Dialog lines
- const maleLines = [
-  "that's right", "goddamn", "let's go", "cash money", "no cap",
-  "straight up", "big moves", "we out here", "too easy", "sheesh"
- ];
- const animeLines = [
-  "uwu", "nya~", "sugoi", "kawaii", "yatta", "moe moe",
-  "desu~", "honto", "ganbaru", "sugoi ne"
- ];
+ const maleLines = ["that's right","goddamn","let's go","cash money","no cap","straight up","big moves","we out here","too easy","sheesh"];
+ const animeLines = ["uwu","nya~","sugoi","kawaii","yatta","moe moe","desu~","honto","ganbaru","sugoi ne"];
 
- // Item types — speeds are px per frame @ 60fps, scaled by dt
  const itemTypes = [
  { text: '$', score: 10, color: '#617858', chance: 0.35, size: 18, speed: 2.5 },
  { text: 'PL', score: 10, color: '#4d5c47', chance: 0.30, size: 16, speed: 2.8 },
@@ -431,775 +414,567 @@ function initGame() {
  { text: '\uD83D\uDC8E', score: 50, color: '#7ec8e3', chance: 0.05, size: 20, speed: 3.9 },
  ];
 
- // Palettes for smooth sky cycle
  const palettes = [
- { top: [8, 6, 18], bot: [20, 15, 35], starA: 0.9, sun: false, moon: true, win: '#ffee88' },
- { top: [35, 25, 55], bot: [160, 90, 60], starA: 0.3, sun: true, moon: false, win: '#ffcc88' },
- { top: [60, 130, 195], bot: [170, 205, 235], starA: 0, sun: true, moon: false, win: '#88ccff' },
- { top: [50, 35, 75], bot: [220, 120, 55], starA: 0.1, sun: true, moon: false, win: '#ffaa55' },
+ { top: [8,6,18], bot: [20,15,35], starA: 0.9, sun: false, moon: true, win: '#ffee88' },
+ { top: [35,25,55], bot: [160,90,60], starA: 0.3, sun: true, moon: false, win: '#ffcc88' },
+ { top: [60,130,195], bot: [170,205,235], starA: 0, sun: true, moon: false, win: '#88ccff' },
+ { top: [50,35,75], bot: [220,120,55], starA: 0.1, sun: true, moon: false, win: '#ffaa55' },
  ];
 
- function lerp(a, b, t) { return a + (b - a) * t; }
- function lerpColor(c1, c2, t) {
- return [Math.round(lerp(c1[0], c2[0], t)), Math.round(lerp(c1[1], c2[1], t)), Math.round(lerp(c1[2], c2[2], t))];
+ function lerp(a,b,t){ return a+(b-a)*t; }
+ function lerpColor(c1,c2,t){
+ return [Math.round(lerp(c1[0],c2[0],t)), Math.round(lerp(c1[1],c2[1],t)), Math.round(lerp(c1[2],c2[2],t))];
  }
 
  function getCurrentPalette() {
- const phase = (bgCycle * 4) % 4;
+ const phase = (bgCycle*4)%4;
  const idx = Math.floor(phase);
- const next = (idx + 1) % 4;
- const t = phase - idx;
- const p1 = palettes[idx], p2 = palettes[next];
+ const next = (idx+1)%4;
+ const t = phase-idx;
+ const p1=palettes[idx], p2=palettes[next];
  return {
- top: lerpColor(p1.top, p2.top, t),
- bot: lerpColor(p1.bot, p2.bot, t),
- starA: lerp(p1.starA, p2.starA, t),
- sun: p1.sun || (t > 0.5 && p2.sun),
- moon: p1.moon && t < 0.5,
- win: t < 0.5 ? p1.win : p2.win,
+ top: lerpColor(p1.top,p2.top,t),
+ bot: lerpColor(p1.bot,p2.bot,t),
+ starA: lerp(p1.starA,p2.starA,t),
+ sun: p1.sun || (t>0.5 && p2.sun),
+ moon: p1.moon && t<0.5,
+ win: t<0.5 ? p1.win : p2.win,
  phase: idx
  };
  }
 
- // Init clouds
- for (let i = 0; i < 6; i++) {
- clouds.push({ x: Math.random() * W, y: 15 + Math.random() * (H / 3), w: 45 + Math.random() * 75, h: 10 + Math.random() * 14, speed: 0.25 + Math.random() * 0.35 });
+ for (let i=0;i<6;i++){
+ clouds.push({ x:Math.random()*W, y:15+Math.random()*(H/3), w:45+Math.random()*75, h:10+Math.random()*14, speed:0.25+Math.random()*0.35 });
  }
- // Init planes
- for (let i = 0; i < 2; i++) {
- planes.push({ x: -80 - Math.random() * 300, y: 25 + Math.random() * 70, speed: 1.2 + Math.random() * 1.0 });
+ for (let i=0;i<2;i++){
+ planes.push({ x:-80-Math.random()*300, y:25+Math.random()*70, speed:1.2+Math.random()*1.0 });
  }
 
- function drawPixelRect(x, y, w, h, color) {
- ctx.fillStyle = color;
- ctx.fillRect(Math.floor(x), Math.floor(y), w, h);
+ function drawPixelRect(x,y,w,h,color){
+ ctx.fillStyle=color;
+ ctx.fillRect(Math.floor(x),Math.floor(y),w,h);
  }
 
- function drawSky() {
- const pal = getCurrentPalette();
- // Smooth pixel sky
- for (let y = 0; y < H; y += 2) {
- const t = y / H;
- const r = Math.round(pal.top[0] + t * (pal.bot[0] - pal.top[0]));
- const g = Math.round(pal.top[1] + t * (pal.bot[1] - pal.top[1]));
- const b = Math.round(pal.top[2] + t * (pal.bot[2] - pal.top[2]));
- drawPixelRect(0, y, W, 2, `rgb(${r},${g},${b})`);
+ function drawSky(){
+ const pal=getCurrentPalette();
+ for (let y=0;y<H;y+=2){
+ const t=y/H;
+ const r=Math.round(pal.top[0]+t*(pal.bot[0]-pal.top[0]));
+ const g=Math.round(pal.top[1]+t*(pal.bot[1]-pal.top[1]));
+ const b=Math.round(pal.top[2]+t*(pal.bot[2]-pal.top[2]));
+ drawPixelRect(0,y,W,2,`rgb(${r},${g},${b})`);
  }
-
- // Stars with twinkle
- if (pal.starA > 0.05) {
- for (let i = 0; i < 30; i++) {
- const sx = ((i * 137) % W);
- const sy = ((i * 53) % (H / 2 + 40));
- const twinkle = Math.sin(frame * 0.04 + i * 0.7) * 0.35 + 0.65;
- const alpha = twinkle * pal.starA;
- ctx.fillStyle = `rgba(255,255,255,${alpha})`;
- ctx.fillRect(sx, sy, 2, 2);
+ if (pal.starA>0.05){
+ for (let i=0;i<30;i++){
+ const sx=((i*137)%W);
+ const sy=((i*53)%(H/2+40));
+ const twinkle=Math.sin(frame*0.04+i*0.7)*0.35+0.65;
+ const alpha=twinkle*pal.starA;
+ ctx.fillStyle=`rgba(255,255,255,${alpha})`;
+ ctx.fillRect(sx,sy,2,2);
  }
  }
-
- // Moon
- if (pal.moon) {
- const mx = W - 75, my = 45;
- drawPixelRect(mx, my, 26, 26, '#e8e4d8');
- drawPixelRect(mx + 4, my + 3, 5, 5, '#d0ccc0');
- drawPixelRect(mx + 14, my + 10, 4, 4, '#d0ccc0');
- // Moon glow
- ctx.fillStyle = 'rgba(232,228,216,0.06)';
- ctx.fillRect(mx - 8, my - 8, 42, 42);
+ if (pal.moon){
+ const mx=W-75,my=45;
+ drawPixelRect(mx,my,26,26,'#e8e4d8');
+ drawPixelRect(mx+4,my+3,5,5,'#d0ccc0');
+ drawPixelRect(mx+14,my+10,4,4,'#d0ccc0');
+ ctx.fillStyle='rgba(232,228,216,0.06)';
+ ctx.fillRect(mx-8,my-8,42,42);
  }
-
- // Sun with arc movement
- if (pal.sun) {
- const sunProgress = (bgCycle * 4) % 4;
+ if (pal.sun){
+ const sunProgress=(bgCycle*4)%4;
  let sunAngle;
- if (sunProgress < 1) sunAngle = 0.2 + sunProgress * 0.3; // dawn rising
- else if (sunProgress < 2) sunAngle = 0.5 + (sunProgress - 1) * 0.4; // day high
- else if (sunProgress < 3) sunAngle = 0.9 + (sunProgress - 2) * 0.3; // sunset
- else sunAngle = 1.2 + (sunProgress - 3) * 0.2; // night hiding
- const sunX = W - 100 + Math.cos(sunAngle) * 30;
- const sunY = 30 + Math.sin(sunAngle) * 25;
- const sunColor = pal.phase === 3 ? '#ff8844' : (pal.phase === 1 ? '#ffcc55' : '#ffee88');
- // Glow
- ctx.fillStyle = sunColor;
- ctx.globalAlpha = 0.08;
- ctx.fillRect(sunX - 15, sunY - 15, 56, 56);
- ctx.globalAlpha = 0.15;
- ctx.fillRect(sunX - 8, sunY - 8, 42, 42);
- ctx.globalAlpha = 1;
- // Sun body
- drawPixelRect(sunX, sunY, 26, 26, sunColor);
- // Rays
- ctx.fillStyle = sunColor;
- for (let i = 0; i < 12; i++) {
- const angle = frame * 0.008 + i * 0.524;
- const rx = sunX + 13 + Math.cos(angle) * 22;
- const ry = sunY + 13 + Math.sin(angle) * 22;
- ctx.globalAlpha = 0.12 + Math.sin(frame * 0.03 + i) * 0.06;
- ctx.fillRect(rx - 1, ry - 1, 3, 3);
+ if (sunProgress<1) sunAngle=0.2+sunProgress*0.3;
+ else if (sunProgress<2) sunAngle=0.5+(sunProgress-1)*0.4;
+ else if (sunProgress<3) sunAngle=0.9+(sunProgress-2)*0.3;
+ else sunAngle=1.2+(sunProgress-3)*0.2;
+ const sunX=W-100+Math.cos(sunAngle)*30;
+ const sunY=30+Math.sin(sunAngle)*25;
+ const sunColor=pal.phase===3?'#ff8844':(pal.phase===1?'#ffcc55':'#ffee88');
+ ctx.fillStyle=sunColor;
+ ctx.globalAlpha=0.08;
+ ctx.fillRect(sunX-15,sunY-15,56,56);
+ ctx.globalAlpha=0.15;
+ ctx.fillRect(sunX-8,sunY-8,42,42);
+ ctx.globalAlpha=1;
+ drawPixelRect(sunX,sunY,26,26,sunColor);
+ ctx.fillStyle=sunColor;
+ for (let i=0;i<12;i++){
+ const angle=frame*0.008+i*0.524;
+ const rx=sunX+13+Math.cos(angle)*22;
+ const ry=sunY+13+Math.sin(angle)*22;
+ ctx.globalAlpha=0.12+Math.sin(frame*0.03+i)*0.06;
+ ctx.fillRect(rx-1,ry-1,3,3);
  }
- ctx.globalAlpha = 1;
+ ctx.globalAlpha=1;
  }
-
- // Clouds
- for (const c of clouds) {
- const cloudColor = pal.phase === 2 ? 'rgba(255,255,255,0.22)' : pal.phase === 3 ? 'rgba(255,180,120,0.14)' : 'rgba(220,218,210,0.09)';
- drawPixelRect(c.x, c.y, c.w, c.h, cloudColor);
- drawPixelRect(c.x + 12, c.y - 4, c.w - 24, c.h, cloudColor.replace(/[0-9.]+\)$/, '0.05)'));
+ for (const c of clouds){
+ const cloudColor=pal.phase===2?'rgba(255,255,255,0.22)':pal.phase===3?'rgba(255,180,120,0.14)':'rgba(220,218,210,0.09)';
+ drawPixelRect(c.x,c.y,c.w,c.h,cloudColor);
  }
-
- // Planes
- for (const p of planes) {
- const pc = pal.phase === 2 ? '#555' : '#999';
- drawPixelRect(p.x, p.y, 22, 3, pc);
- drawPixelRect(p.x + 7, p.y - 3, 8, 9, pc);
- drawPixelRect(p.x + 18, p.y - 3, 3, 5, pc);
- if (frame % 50 < 25) drawPixelRect(p.x + 20, p.y - 1, 2, 2, '#ff3333');
+ for (const p of planes){
+ const pc=pal.phase===2?'#555':'#999';
+ drawPixelRect(p.x,p.y,22,3,pc);
+ drawPixelRect(p.x+7,p.y-3,8,9,pc);
+ drawPixelRect(p.x+18,p.y-3,3,5,pc);
+ if (frame%50<25) drawPixelRect(p.x+20,p.y-1,2,2,'#ff3333');
  }
-
- // City skyline
- const cityColor = pal.phase === 2 ? '#1a1a2e' : '#080810';
- const buildings = [
- [0, 28], [55, 42], [95, 22], [140, 35], [185, 18],
- [220, 30], [265, 24], [310, 38], [360, 20], [405, 32],
- [450, 26], [495, 40], [540, 22], [585, 34], [625, 28]
- ];
- for (const [bx, bh] of buildings) {
- drawPixelRect(bx, H - bh, 35, bh, cityColor);
+ const cityColor=pal.phase===2?'#1a1a2e':'#080810';
+ const buildings=[[0,28],[55,42],[95,22],[140,35],[185,18],[220,30],[265,24],[310,38],[360,20],[405,32],[450,26],[495,40],[540,22],[585,34],[625,28]];
+ for (const [bx,bh] of buildings){
+ drawPixelRect(bx,H-bh,35,bh,cityColor);
  }
- // Windows — drawn per-building so they don't bleed
- ctx.fillStyle = pal.win;
- for (const [bx, bh] of buildings) {
- for (let wx = bx + 4; wx < bx + 31; wx += 7) {
- for (let wy = H - bh + 5; wy < H - 4; wy += 9) {
- if ((wx * 7 + wy * 3 + bx) % 13 < 6) ctx.fillRect(wx, wy, 3, 4);
+ ctx.fillStyle=pal.win;
+ for (const [bx,bh] of buildings){
+ for (let wx=bx+4; wx<bx+31; wx+=7){
+ for (let wy=H-bh+5; wy<H-4; wy+=9){
+ if ((wx*7+wy*3+bx)%13<6) ctx.fillRect(wx,wy,3,4);
  }
  }
  }
  }
 
- function drawUFO() {
- const ux = ufoEvent.x;
- const uy = ufoEvent.y;
- ufoEvent.rot += 0.03;
+ function drawPlayer(){
+ const {x,y,w,h}=player;
+ const skin='#d4a574', skinDark='#b0865a', hair='#1a1a1a';
+ const beanie='#e85d3e', beanieDark='#c44a30';
+ const shades='#0a0a0a', shadesFrame='#ffd700', chain='#ffd700';
 
- // Beam with animated particles
- if (ufoEvent.beamAlpha > 0) {
- const bAlpha = ufoEvent.beamAlpha;
- // Main beam cone
- ctx.fillStyle = `rgba(100, 255, 80, ${bAlpha * 0.18})`;
+ for (let i=0;i<5;i++){
+ const offset=i*2.5;
+ const sway=Math.sin(frame*0.05+i*0.9)*2.5;
+ const baseLen=16+i*1.5;
+ drawPixelRect(x-6+offset+sway,y+12,4,baseLen-3,hair);
+ drawPixelRect(x-5+offset+sway*0.7,y+12+baseLen-3,2,3,hair);
+ if (i%2===0) drawPixelRect(x-5+offset+sway,y+14,1,baseLen-6,'#2a2a2a');
+ }
+ for (let i=0;i<5;i++){
+ const offset=i*2.5;
+ const sway=Math.sin(frame*0.05+i*0.9+2.5)*2.5;
+ const baseLen=16+i*1.5;
+ drawPixelRect(x+w+2+offset+sway,y+12,4,baseLen-3,hair);
+ drawPixelRect(x+w+3+offset+sway*0.7,y+12+baseLen-3,2,3,hair);
+ if (i%2===0) drawPixelRect(x+w+3+offset+sway,y+14,1,baseLen-6,'#2a2a2a');
+ }
+ for (let i=0;i<3;i++){
+ const sway=Math.sin(frame*0.04+i*1.2)*1.5;
+ drawPixelRect(x+6+i*8+sway,y+10,3,12,hair);
+ }
+
+ drawPixelRect(x+4,y+10,w-8,22,skin);
+ drawPixelRect(x+6,y+30,w-12,4,skinDark);
+ drawPixelRect(x+2,y,w-4,12,beanie);
+ drawPixelRect(x,y+3,w,8,beanie);
+ drawPixelRect(x+4,y-3,w-8,6,beanieDark);
+ drawPixelRect(x+2,y+8,w-4,4,beanieDark);
+ drawPixelRect(x+w/2-3,y+4,6,5,'#4a8c5a');
+ drawPixelRect(x+w/2-1,y+5,2,3,'#3a7c4a');
+ drawPixelRect(x+5,y+16,w-10,9,shades);
+ drawPixelRect(x+4,y+15,w-8,2,shadesFrame);
+ drawPixelRect(x+4,y+24,w-8,2,shadesFrame);
+ drawPixelRect(x+w/2-2,y+18,4,4,shadesFrame);
+ drawPixelRect(x+8,y+17,5,2,'#222');
+ drawPixelRect(x+w-15,y+18,4,2,'#222');
+ drawPixelRect(x+w/2-1,y+24,2,3,skinDark);
+ drawPixelRect(x+10,y+29,w-20,2,'#6b4226');
+ drawPixelRect(x+12,y+28,3,2,'#6b4226');
+ drawPixelRect(x+8,y+30,w-16,3,hair);
+ drawPixelRect(x+10,y+34,w-20,3,chain);
+ drawPixelRect(x+14,y+35,3,2,'#ffee88');
+ drawPixelRect(x+w-19,y+35,3,2,'#ffee88');
+ }
+
+ function drawAnimeGirl(){
+ const {x,y,w,h}=player;
+ const skin='#ffe0d0', skinDark='#f0c0a8', hair='#ffb7d5', hairDark='#e89bb8', hairLight='#ffd0e5';
+ const eyeWhite='#ffffff', eyeColor='#44aaff', eyePupil='#224488', blush='#ff99aa', mouth='#cc6677', bow='#ff5588';
+
+ drawPixelRect(x-4,y+8,w+8,18,hair);
+ drawPixelRect(x-2,y+24,w+4,10,hair);
+ for (let i=0;i<4;i++){
+ const sway=Math.sin(frame*0.06+i*1.1)*2;
+ const hx=x-2+i*10;
+ drawPixelRect(hx+sway,y+32,6,8,hairDark);
+ drawPixelRect(hx+sway*0.5,y+38,4,4,hair);
+ }
+ const leftSway=Math.sin(frame*0.07+1)*3;
+ drawPixelRect(x-14+leftSway,y+6,10,14,hair);
+ drawPixelRect(x-12+leftSway*0.8,y+18,8,10,hair);
+ drawPixelRect(x-10+leftSway*0.6,y+26,6,8,hairDark);
+ drawPixelRect(x-8+leftSway*0.5,y+4,6,5,bow);
+ drawPixelRect(x-10+leftSway*0.5,y+5,3,3,'#ff3366');
+ drawPixelRect(x-3+leftSway*0.5,y+5,3,3,'#ff3366');
+ const rightSway=Math.sin(frame*0.07+2.5)*3;
+ drawPixelRect(x+w+4+rightSway,y+6,10,14,hair);
+ drawPixelRect(x+w+4+rightSway*0.8,y+18,8,10,hair);
+ drawPixelRect(x+w+6+rightSway*0.6,y+26,6,8,hairDark);
+ drawPixelRect(x+w+2+rightSway*0.5,y+4,6,5,bow);
+ drawPixelRect(x+w+rightSway*0.5,y+5,3,3,'#ff3366');
+ drawPixelRect(x+w+7+rightSway*0.5,y+5,3,3,'#ff3366');
+
+ drawPixelRect(x+4,y+8,w-8,24,skin);
+ drawPixelRect(x+6,y+30,w-12,4,skin);
+ drawPixelRect(x+2,y+4,w-4,8,hair);
+ drawPixelRect(x+4,y+10,4,4,hair);
+ drawPixelRect(x+10,y+10,3,5,hair);
+ drawPixelRect(x+w-14,y+10,3,5,hair);
+ drawPixelRect(x+w-8,y+10,4,4,hair);
+ drawPixelRect(x+w/2-3,y+8,6,4,skin);
+
+ drawPixelRect(x+7,y+14,10,10,eyeWhite);
+ drawPixelRect(x+9,y+16,6,6,eyeColor);
+ drawPixelRect(x+10,y+17,3,4,eyePupil);
+ drawPixelRect(x+11,y+15,2,2,'#ffffff');
+ drawPixelRect(x+w-17,y+14,10,10,eyeWhite);
+ drawPixelRect(x+w-15,y+16,6,6,eyeColor);
+ drawPixelRect(x+w-14,y+17,3,4,eyePupil);
+ drawPixelRect(x+w-13,y+15,2,2,'#ffffff');
+ drawPixelRect(x+6,y+13,12,2,hair);
+ drawPixelRect(x+w-18,y+13,12,2,hair);
+ drawPixelRect(x+6,y+22,5,3,blush);
+ drawPixelRect(x+w-11,y+22,5,3,blush);
+ drawPixelRect(x+w/2-1,y+22,2,2,skinDark);
+ drawPixelRect(x+14,y+26,w-28,2,mouth);
+ drawPixelRect(x+16,y+25,2,2,mouth);
+ drawPixelRect(x+w-18,y+25,2,2,mouth);
+ drawPixelRect(x+6,y+5,4,2,hairLight);
+ drawPixelRect(x+w-10,y+5,4,2,hairLight);
+ }
+
+ function drawUFO(){
+ const ux=ufoEvent.x, uy=ufoEvent.y;
+ ufoEvent.rot+=0.03;
+
+ if (ufoEvent.beamAlpha>0){
+ const bA=ufoEvent.beamAlpha;
+ ctx.fillStyle=`rgba(100,255,80,${bA*0.18})`;
  ctx.beginPath();
- ctx.moveTo(ux + 15, uy + 14);
- ctx.lineTo(ux - 35, H - 30);
- ctx.lineTo(ux + 65, H - 30);
+ ctx.moveTo(ux+15,uy+14);
+ ctx.lineTo(ux-35,H-30);
+ ctx.lineTo(ux+65,H-30);
  ctx.closePath();
  ctx.fill();
- // Inner beam
- ctx.fillStyle = `rgba(140, 255, 120, ${bAlpha * 0.12})`;
+ ctx.fillStyle=`rgba(140,255,120,${bA*0.12})`;
  ctx.beginPath();
- ctx.moveTo(ux + 15, uy + 14);
- ctx.lineTo(ux - 15, H - 30);
- ctx.lineTo(ux + 45, H - 30);
+ ctx.moveTo(ux+15,uy+14);
+ ctx.lineTo(ux-15,H-30);
+ ctx.lineTo(ux+45,H-30);
  ctx.closePath();
  ctx.fill();
- // Beam border
- ctx.strokeStyle = `rgba(120, 255, 80, ${bAlpha * 0.45})`;
- ctx.lineWidth = 1;
- ctx.beginPath();
- ctx.moveTo(ux + 15, uy + 14);
- ctx.lineTo(ux - 35, H - 30);
- ctx.stroke();
- ctx.beginPath();
- ctx.moveTo(ux + 15, uy + 14);
- ctx.lineTo(ux + 65, H - 30);
- ctx.stroke();
-
- // Floating particles in beam
- for (let i = 0; i < 8; i++) {
- const py = uy + 20 + (frame * 2 + i * 40) % (H - uy - 50);
- const px = ux + 15 + Math.sin(frame * 0.05 + i * 0.8) * (py - uy) * 0.4;
- const ps = 1 + Math.sin(frame * 0.1 + i) * 0.5;
- ctx.fillStyle = `rgba(150, 255, 100, ${bAlpha * 0.6})`;
- ctx.fillRect(px, py, ps, ps);
+ ctx.strokeStyle=`rgba(120,255,80,${bA*0.45})`;
+ ctx.lineWidth=1;
+ ctx.beginPath(); ctx.moveTo(ux+15,uy+14); ctx.lineTo(ux-35,H-30); ctx.stroke();
+ ctx.beginPath(); ctx.moveTo(ux+15,uy+14); ctx.lineTo(ux+65,H-30); ctx.stroke();
+ for (let i=0;i<8;i++){
+ const py=uy+20+(frame*2+i*40)%(H-uy-50);
+ const px=ux+15+Math.sin(frame*0.05+i*0.8)*(py-uy)*0.4;
+ const ps=1+Math.sin(frame*0.1+i)*0.5;
+ ctx.fillStyle=`rgba(150,255,100,${bA*0.6})`;
+ ctx.fillRect(px,py,ps,ps);
  }
  }
 
- // UFO shadow / glow underneath
- ctx.fillStyle = 'rgba(100,255,80,0.08)';
- ctx.fillRect(ux - 10, uy + 12, 80, 6);
+ ctx.fillStyle='rgba(100,255,80,0.08)';
+ ctx.fillRect(ux-10,uy+12,80,6);
+ drawPixelRect(ux,uy,60,14,'#5a5a5a');
+ drawPixelRect(ux+2,uy+2,56,10,'#707070');
+ drawPixelRect(ux+16,uy-9,28,12,'#b0d0e0');
+ drawPixelRect(ux+20,uy-7,20,8,'#c8e4f0');
+ drawPixelRect(ux+22,uy-5,6,3,'#ffffff');
+ const lightColors=['#ff3333','#ff9933','#ffff33','#33ff33','#33ffff','#ff33ff'];
+ for (let i=0;i<6;i++){
+ const offset=Math.floor(frame*0.12)%6;
+ const on=(i+offset)%6<3;
+ const lx=ux+5+i*9;
+ drawPixelRect(lx,uy+3,6,6,on?lightColors[i]:'#444');
+ if (on){
+ ctx.fillStyle=lightColors[i]+'22';
+ ctx.fillRect(lx-2,uy+1,10,10);
+ }
+ }
+ drawPixelRect(ux+14,uy-13,2,5,'#888');
+ drawPixelRect(ux+13,uy-15,4,3,'#ff3333');
+ if (frame%20<10){
+ ctx.fillStyle='rgba(255,50,50,0.3)';
+ ctx.fillRect(ux+10,uy-18,10,10);
+ }
 
- // UFO saucer (rotating disc effect via offset lights)
- drawPixelRect(ux, uy, 60, 14, '#5a5a5a');
- drawPixelRect(ux + 2, uy + 2, 56, 10, '#707070');
- // Dome
- drawPixelRect(ux + 16, uy - 9, 28, 12, '#b0d0e0');
- drawPixelRect(ux + 20, uy - 7, 20, 8, '#c8e4f0');
- // Dome reflection
- drawPixelRect(ux + 22, uy - 5, 6, 3, '#ffffff');
+ for (let i=0;i<ufoEvent.abductees.length;i++){
+ const a=ufoEvent.abductees[i];
+ const bob=Math.sin(frame*0.08+i*1.5)*2;
+ const ax=a.x+Math.sin(frame*0.05+i)*1.5;
+ const ay=a.y+bob;
+ drawPixelRect(ax,ay,10,10,a.color);
+ drawPixelRect(ax+1,ay-2,8,3,a.color);
+ drawPixelRect(ax+1,ay+2,3,3,'#000');
+ drawPixelRect(ax+6,ay+2,3,3,'#000');
+ drawPixelRect(ax+2,ay+3,1,1,'#fff');
+ drawPixelRect(ax+7,ay+3,1,1,'#fff');
+ if (Math.floor(frame*0.1+i)%4<2) drawPixelRect(ax+4,ay+6,2,1,'#000');
+ drawPixelRect(ax+2,ay+10,6,2,'#a0a0a0');
+ const micX=ax+(i%2===0?-3:10);
+ drawPixelRect(micX,ay+4,2,5,'#333');
+ drawPixelRect(micX-1,ay+2,4,3,'#666');
+ drawPixelRect(ax+(i%2===0?0:7),ay+5,3,2,a.color);
+ }
 
- // Ring lights (animated chase)
- const lightColors = ['#ff3333', '#ff9933', '#ffff33', '#33ff33', '#33ffff', '#ff33ff'];
- for (let i = 0; i < 6; i++) {
- const offset = Math.floor(frame * 0.12) % 6;
- const on = (i + offset) % 6 < 3;
- const lx = ux + 5 + i * 9;
- drawPixelRect(lx, uy + 3, 6, 6, on ? lightColors[i] : '#444');
- if (on) {
- ctx.fillStyle = lightColors[i] + '22';
- ctx.fillRect(lx - 2, uy + 1, 10, 10);
+ ctx.font='bold 10px "DM Mono", monospace';
+ ctx.fillStyle='#33ff33';
+ ctx.textAlign='center';
+ ctx.shadowColor='#33ff33';
+ ctx.shadowBlur=4;
+ ctx.fillText('420',ux+30,uy+11);
+ ctx.shadowBlur=0;
+ }
+
+ function drawCop(){
+ const cx=player.x+player.w/2-18, cy=copY;
+ drawPixelRect(cx+4,cy,28,10,'#1a3a6b');
+ drawPixelRect(cx,cy+6,36,5,'#1a3a6b');
+ drawPixelRect(cx+14,cy+3,8,5,'#ffd700');
+ drawPixelRect(cx+6,cy+10,24,18,'#d4a574');
+ drawPixelRect(cx+7,cy+14,22,6,'#0a0a0a');
+ drawPixelRect(cx+10,cy+22,16,3,'#2a2a2a');
+ drawPixelRect(cx+4,cy+26,28,6,'#1a3a6b');
+ drawPixelRect(cx+12,cy+28,12,3,'#ffd700');
+ }
+
+ function drawPoliceLights(){
+ const flashSpeed=8;
+ const isRed=Math.floor(frame/flashSpeed)%2===0;
+ for (let i=0;i<6;i++){
+ const lx=60+i*90;
+ const color=(i%2===0)?(isRed?'#ff0000':'#330000'):(isRed?'#000033':'#0000ff');
+ ctx.fillStyle=color;
+ ctx.fillRect(lx,4,20,8);
+ ctx.globalAlpha=isRed?0.3:0.15;
+ ctx.fillRect(lx-4,0,28,16);
+ }
+ ctx.globalAlpha=1;
+ ctx.fillStyle=isRed?'rgba(255,0,0,0.08)':'rgba(0,0,255,0.08)';
+ ctx.fillRect(0,0,W,H);
+ }
+
+ function drawItem(it){
+ ctx.font=`bold ${it.type.size}px "DM Mono", monospace`;
+ ctx.textAlign='center';
+ ctx.textBaseline='middle';
+ ctx.fillStyle=it.type.color;
+ ctx.fillText(it.type.text,it.x,it.y);
+ if (it.type.text==='\uD83D\uDC8E'){
+ ctx.shadowColor='#7ec8e3';
+ ctx.shadowBlur=12;
+ ctx.fillText(it.type.text,it.x,it.y);
+ ctx.shadowBlur=0;
  }
  }
 
- // Antenna
- drawPixelRect(ux + 14, uy - 13, 2, 5, '#888');
- drawPixelRect(ux + 13, uy - 15, 4, 3, '#ff3333');
- if (frame % 20 < 10) {
- ctx.fillStyle = 'rgba(255,50,50,0.3)';
- ctx.fillRect(ux + 10, uy - 18, 10, 10);
- }
-
- // Abductees (chained aliens rapping with animation)
- for (let i = 0; i < ufoEvent.abductees.length; i++) {
- const a = ufoEvent.abductees[i];
- const bob = Math.sin(frame * 0.08 + i * 1.5) * 2;
- const ax = a.x + Math.sin(frame * 0.05 + i) * 1.5;
- const ay = a.y + bob;
-
- // Body (classic grey alien shape)
- drawPixelRect(ax, ay, 10, 10, a.color);
- drawPixelRect(ax + 1, ay - 2, 8, 3, a.color); // head bulge
- // Big black eyes
- drawPixelRect(ax + 1, ay + 2, 3, 3, '#000');
- drawPixelRect(ax + 6, ay + 2, 3, 3, '#000');
- // Eye shine
- drawPixelRect(ax + 2, ay + 3, 1, 1, '#fff');
- drawPixelRect(ax + 7, ay + 3, 1, 1, '#fff');
- // Mouth (rapping — open/closed)
- if (Math.floor(frame * 0.1 + i) % 4 < 2) {
- drawPixelRect(ax + 4, ay + 6, 2, 1, '#000');
- }
- // Chain
- drawPixelRect(ax + 2, ay + 10, 6, 2, '#a0a0a0');
- // Mic in hand
- const micX = ax + (i % 2 === 0 ? -3 : 10);
- drawPixelRect(micX, ay + 4, 2, 5, '#333');
- drawPixelRect(micX - 1, ay + 2, 4, 3, '#666');
- // Hand
- drawPixelRect(ax + (i % 2 === 0 ? 0 : 7), ay + 5, 3, 2, a.color);
- }
-
- // 420 text
- ctx.font = 'bold 10px "DM Mono", monospace';
- ctx.fillStyle = '#33ff33';
- ctx.textAlign = 'center';
- ctx.shadowColor = '#33ff33';
- ctx.shadowBlur = 4;
- ctx.fillText('420', ux + 30, uy + 11);
- ctx.shadowBlur = 0;
- }
-
- function drawPlayer() {
- const { x, y, w, h } = player;
- const skin = '#d4a574';
- const skinDark = '#b0865a';
- const hair = '#1a1a1a';
- const beanie = '#e85d3e'; // orange beanie
- const beanieDark = '#c44a30';
- const shades = '#0a0a0a';
- const shadesFrame = '#ffd700';
- const chain = '#ffd700';
-
- // === IMPROVED DREADS ===
- // Left dreads - thicker, with tapered ends, more natural sway
- for (let i = 0; i < 5; i++) {
- const offset = i * 2.5;
- const sway = Math.sin(frame * 0.05 + i * 0.9) * 2.5;
- const baseLen = 16 + i * 1.5;
- // Main dread body
- drawPixelRect(x - 6 + offset + sway, y + 12, 4, baseLen - 3, hair);
- // Tapered tip
- drawPixelRect(x - 5 + offset + sway * 0.7, y + 12 + baseLen - 3, 2, 3, hair);
- // Subtle highlight
- if (i % 2 === 0) drawPixelRect(x - 5 + offset + sway, y + 14, 1, baseLen - 6, '#2a2a2a');
- }
- // Right dreads
- for (let i = 0; i < 5; i++) {
- const offset = i * 2.5;
- const sway = Math.sin(frame * 0.05 + i * 0.9 + 2.5) * 2.5;
- const baseLen = 16 + i * 1.5;
- drawPixelRect(x + w + 2 + offset + sway, y + 12, 4, baseLen - 3, hair);
- drawPixelRect(x + w + 3 + offset + sway * 0.7, y + 12 + baseLen - 3, 2, 3, hair);
- if (i % 2 === 0) drawPixelRect(x + w + 3 + offset + sway, y + 14, 1, baseLen - 6, '#2a2a2a');
- }
- // Back dreads peeking behind
- for (let i = 0; i < 3; i++) {
- const sway = Math.sin(frame * 0.04 + i * 1.2) * 1.5;
- drawPixelRect(x + 6 + i * 8 + sway, y + 10, 3, 12, hair);
- }
-
- // Face
- drawPixelRect(x + 4, y + 10, w - 8, 22, skin);
- // Chin shadow
- drawPixelRect(x + 6, y + 30, w - 12, 4, skinDark);
-
- // Beanie (orange, puffy)
- drawPixelRect(x + 2, y, w - 4, 12, beanie);
- drawPixelRect(x, y + 3, w, 8, beanie);
- drawPixelRect(x + 4, y - 3, w - 8, 6, beanieDark);
- // Beanie fold
- drawPixelRect(x + 2, y + 8, w - 4, 4, beanieDark);
- // Beanie logo (small green square like in image)
- drawPixelRect(x + w/2 - 3, y + 4, 6, 5, '#4a8c5a');
- drawPixelRect(x + w/2 - 1, y + 5, 2, 3, '#3a7c4a');
-
- // Sunglasses (big, gold frame)
- drawPixelRect(x + 5, y + 16, w - 10, 9, shades);
- drawPixelRect(x + 4, y + 15, w - 8, 2, shadesFrame);
- drawPixelRect(x + 4, y + 24, w - 8, 2, shadesFrame);
- // Bridge
- drawPixelRect(x + w/2 - 2, y + 18, 4, 4, shadesFrame);
- // Reflection
- drawPixelRect(x + 8, y + 17, 5, 2, '#222');
- drawPixelRect(x + w - 15, y + 18, 4, 2, '#222');
-
- // Nose
- drawPixelRect(x + w/2 - 1, y + 24, 2, 3, skinDark);
-
- // Mouth (slight smile)
- drawPixelRect(x + 10, y + 29, w - 20, 2, '#6b4226');
- drawPixelRect(x + 12, y + 28, 3, 2, '#6b4226');
-
- // Small beard stubble
- drawPixelRect(x + 8, y + 30, w - 16, 3, hair);
-
- // Gold chain
- drawPixelRect(x + 10, y + 34, w - 20, 3, chain);
- drawPixelRect(x + 14, y + 35, 3, 2, '#ffee88');
- drawPixelRect(x + w - 19, y + 35, 3, 2, '#ffee88');
- }
-
- function drawAnimeGirl() {
- const { x, y, w, h } = player;
- const skin = '#ffe0d0';
- const skinDark = '#f0c0a8';
- const hair = '#ffb7d5'; // pink hair
- const hairDark = '#e89bb8';
- const hairLight = '#ffd0e5';
- const eyeWhite = '#ffffff';
- const eyeColor = '#44aaff'; // big blue eyes
- const eyePupil = '#224488';
- const blush = '#ff99aa';
- const mouth = '#cc6677';
- const bow = '#ff5588';
-
- // === BACK HAIR (long, flowing) ===
- // Main back hair mass
- drawPixelRect(x - 4, y + 8, w + 8, 18, hair);
- drawPixelRect(x - 2, y + 24, w + 4, 10, hair);
- // Hair tips swaying
- for (let i = 0; i < 4; i++) {
- const sway = Math.sin(frame * 0.06 + i * 1.1) * 2;
- const hx = x - 2 + i * 10;
- drawPixelRect(hx + sway, y + 32, 6, 8, hairDark);
- drawPixelRect(hx + sway * 0.5, y + 38, 4, 4, hair);
- }
-
- // === PIGTAILS (two side ponytails) ===
- // Left pigtail
- const leftSway = Math.sin(frame * 0.07 + 1) * 3;
- drawPixelRect(x - 14 + leftSway, y + 6, 10, 14, hair);
- drawPixelRect(x - 12 + leftSway * 0.8, y + 18, 8, 10, hair);
- drawPixelRect(x - 10 + leftSway * 0.6, y + 26, 6, 8, hairDark);
- // Left hair tie (bow)
- drawPixelRect(x - 8 + leftSway * 0.5, y + 4, 6, 5, bow);
- drawPixelRect(x - 10 + leftSway * 0.5, y + 5, 3, 3, '#ff3366');
- drawPixelRect(x - 3 + leftSway * 0.5, y + 5, 3, 3, '#ff3366');
-
- // Right pigtail
- const rightSway = Math.sin(frame * 0.07 + 2.5) * 3;
- drawPixelRect(x + w + 4 + rightSway, y + 6, 10, 14, hair);
- drawPixelRect(x + w + 4 + rightSway * 0.8, y + 18, 8, 10, hair);
- drawPixelRect(x + w + 6 + rightSway * 0.6, y + 26, 6, 8, hairDark);
- // Right hair tie (bow)
- drawPixelRect(x + w + 2 + rightSway * 0.5, y + 4, 6, 5, bow);
- drawPixelRect(x + w + rightSway * 0.5, y + 5, 3, 3, '#ff3366');
- drawPixelRect(x + w + 7 + rightSway * 0.5, y + 5, 3, 3, '#ff3366');
-
- // === FACE ===
- drawPixelRect(x + 4, y + 8, w - 8, 24, skin);
- // Chin
- drawPixelRect(x + 6, y + 30, w - 12, 4, skin);
-
- // === BANGS ===
- drawPixelRect(x + 2, y + 4, w - 4, 8, hair);
- // Bang strands
- drawPixelRect(x + 4, y + 10, 4, 4, hair);
- drawPixelRect(x + 10, y + 10, 3, 5, hair);
- drawPixelRect(x + w - 14, y + 10, 3, 5, hair);
- drawPixelRect(x + w - 8, y + 10, 4, 4, hair);
- // Center gap for face
- drawPixelRect(x + w/2 - 3, y + 8, 6, 4, skin);
-
- // === BIG EYES ===
- // Left eye
- drawPixelRect(x + 7, y + 14, 10, 10, eyeWhite);
- drawPixelRect(x + 9, y + 16, 6, 6, eyeColor);
- drawPixelRect(x + 10, y + 17, 3, 4, eyePupil);
- drawPixelRect(x + 11, y + 15, 2, 2, '#ffffff'); // highlight
- // Right eye
- drawPixelRect(x + w - 17, y + 14, 10, 10, eyeWhite);
- drawPixelRect(x + w - 15, y + 16, 6, 6, eyeColor);
- drawPixelRect(x + w - 14, y + 17, 3, 4, eyePupil);
- drawPixelRect(x + w - 13, y + 15, 2, 2, '#ffffff'); // highlight
-
- // Eyelashes
- drawPixelRect(x + 6, y + 13, 12, 2, hair);
- drawPixelRect(x + w - 18, y + 13, 12, 2, hair);
-
- // === BLUSH ===
- drawPixelRect(x + 6, y + 22, 5, 3, blush);
- drawPixelRect(x + w - 11, y + 22, 5, 3, blush);
-
- // === NOSE ===
- drawPixelRect(x + w/2 - 1, y + 22, 2, 2, skinDark);
-
- // === MOUTH (small cat-like) ===
- drawPixelRect(x + 14, y + 26, w - 28, 2, mouth);
- drawPixelRect(x + 16, y + 25, 2, 2, mouth);
- drawPixelRect(x + w - 18, y + 25, 2, 2, mouth);
-
- // === HAIR HIGHLIGHTS ===
- drawPixelRect(x + 6, y + 5, 4, 2, hairLight);
- drawPixelRect(x + w - 10, y + 5, 4, 2, hairLight);
- }
-
- function drawCop() {
- // Police head descending from top to catch player
- const cx = player.x + player.w/2 - 18;
- const cy = copY;
- // Police hat (blue)
- drawPixelRect(cx + 4, cy, 28, 10, '#1a3a6b');
- drawPixelRect(cx, cy + 6, 36, 5, '#1a3a6b');
- // Hat badge
- drawPixelRect(cx + 14, cy + 3, 8, 5, '#ffd700');
- // Face
- drawPixelRect(cx + 6, cy + 10, 24, 18, '#d4a574');
- // Sunglasses
- drawPixelRect(cx + 7, cy + 14, 22, 6, '#0a0a0a');
- // Mustache
- drawPixelRect(cx + 10, cy + 22, 16, 3, '#2a2a2a');
- // Uniform collar
- drawPixelRect(cx + 4, cy + 26, 28, 6, '#1a3a6b');
- drawPixelRect(cx + 12, cy + 28, 12, 3, '#ffd700');
- }
-
- function drawPoliceLights() {
- const flashSpeed = 8;
- const isRed = Math.floor(frame / flashSpeed) % 2 === 0;
- // Top bar lights
- for (let i = 0; i < 6; i++) {
- const lx = 60 + i * 90;
- const color = (i % 2 === 0) ? (isRed ? '#ff0000' : '#330000') : (isRed ? '#000033' : '#0000ff');
- ctx.fillStyle = color;
- ctx.fillRect(lx, 4, 20, 8);
- // Glow
- ctx.globalAlpha = isRed ? 0.3 : 0.15;
- ctx.fillRect(lx - 4, 0, 28, 16);
- }
- ctx.globalAlpha = 1;
- // Side flashes
- ctx.fillStyle = isRed ? 'rgba(255,0,0,0.08)' : 'rgba(0,0,255,0.08)';
- ctx.fillRect(0, 0, W, H);
- }
-
- function drawItem(it) {
- ctx.font = `bold ${it.type.size}px "DM Mono", monospace`;
- ctx.textAlign = 'center';
- ctx.textBaseline = 'middle';
- ctx.fillStyle = it.type.color;
- ctx.fillText(it.type.text, it.x, it.y);
- if (it.type.text === '\uD83D\uDC8E') {
- ctx.shadowColor = '#7ec8e3';
- ctx.shadowBlur = 12;
- ctx.fillText(it.type.text, it.x, it.y);
- ctx.shadowBlur = 0;
+ function drawParticles(){
+ for (const p of particles){
+ drawPixelRect(p.x,p.y,p.size,p.size,p.color);
  }
  }
 
- function drawParticles() {
- for (const p of particles) {
- drawPixelRect(p.x, p.y, p.size, p.size, p.color);
- }
- }
-
- function drawDialog() {
+ function drawDialog(){
  if (!activeDialog) return;
- const { text, x, y } = activeDialog;
- const px = x;
- const py = y - 28;
-
- ctx.font = 'bold 11px "DM Mono", monospace';
- ctx.textAlign = 'center';
- const metrics = ctx.measureText(text);
- const pad = 8;
- const bw = metrics.width + pad * 2;
- const bh = 20;
- const bx = px - bw / 2;
- const by = py - bh / 2;
-
- // Bubble background
- ctx.fillStyle = 'rgba(255,255,255,0.92)';
- ctx.fillRect(bx, by, bw, bh);
- ctx.strokeStyle = '#151515';
- ctx.lineWidth = 1;
- ctx.strokeRect(bx, by, bw, bh);
-
- // Little tail
- ctx.fillStyle = 'rgba(255,255,255,0.92)';
+ const {text,x,y}=activeDialog;
+ const px=x, py=y-28;
+ ctx.font='bold 11px "DM Mono", monospace';
+ ctx.textAlign='center';
+ const metrics=ctx.measureText(text);
+ const pad=8, bw=metrics.width+pad*2, bh=20;
+ const bx=px-bw/2, by=py-bh/2;
+ ctx.fillStyle='rgba(255,255,255,0.92)';
+ ctx.fillRect(bx,by,bw,bh);
+ ctx.strokeStyle='#151515';
+ ctx.lineWidth=1;
+ ctx.strokeRect(bx,by,bw,bh);
+ ctx.fillStyle='rgba(255,255,255,0.92)';
  ctx.beginPath();
- ctx.moveTo(px - 3, by + bh);
- ctx.lineTo(px + 3, by + bh);
- ctx.lineTo(px, by + bh + 4);
- ctx.closePath();
- ctx.fill();
- ctx.strokeStyle = '#151515';
+ ctx.moveTo(px-3,by+bh); ctx.lineTo(px+3,by+bh); ctx.lineTo(px,by+bh+4);
+ ctx.closePath(); ctx.fill();
+ ctx.strokeStyle='#151515';
  ctx.beginPath();
- ctx.moveTo(px - 3, by + bh);
- ctx.lineTo(px, by + bh + 4);
- ctx.lineTo(px + 3, by + bh);
+ ctx.moveTo(px-3,by+bh); ctx.lineTo(px,by+bh+4); ctx.lineTo(px+3,by+bh);
  ctx.stroke();
-
- // Text
- ctx.fillStyle = '#151515';
- ctx.fillText(text, px, py + 1);
+ ctx.fillStyle='#151515';
+ ctx.fillText(text,px,py+1);
  }
 
- function spawnItem() {
- const r = Math.random();
- let acc = 0, type = itemTypes[0];
- for (const t of itemTypes) {
- acc += t.chance;
- if (r <= acc) { type = t; break; }
+ function spawnItem(){
+ const r=Math.random();
+ let acc=0, type=itemTypes[0];
+ for (const t of itemTypes){
+ acc+=t.chance;
+ if (r<=acc){ type=t; break; }
  }
- items.push({ x: 30 + Math.random() * (W - 60), y: -25, type: type, vy: type.speed * speedMult + Math.random() * 0.2 });
+ items.push({ x:30+Math.random()*(W-60), y:-25, type:type, vy:type.speed*speedMult+Math.random()*0.2 });
  }
 
- function addParticles(x, y, color) {
- for (let i = 0; i < 10; i++) {
- particles.push({ x, y, vx: (Math.random() - 0.5) * 5, vy: (Math.random() - 0.5) * 5 - 3, size: 2 + Math.random() * 4, color, life: 40 });
+ function addParticles(x,y,color){
+ for (let i=0;i<10;i++){
+ particles.push({ x,y, vx:(Math.random()-0.5)*5, vy:(Math.random()-0.5)*5-3, size:2+Math.random()*4, color, life:40 });
  }
  }
 
- function triggerDialog(trigger) {
- if (activeDialog && activeDialog.timer > 0) return;
- const lines = selectedChar === 'male' ? maleLines : animeLines;
- let text = '';
- if (trigger === 'diamond') {
- text = selectedChar === 'male' ? "that's right" : "uwu";
- } else if (trigger === 'milestone') {
- text = lines[Math.floor(Math.random() * lines.length)];
- }
- if (text) {
- activeDialog = {
- text,
- timer: 90,
- x: player.x + player.w / 2,
- y: player.y
- };
+ function triggerDialog(trigger){
+ if (activeDialog && activeDialog.timer>0) return;
+ const lines=selectedChar==='male'?maleLines:animeLines;
+ let text='';
+ if (trigger==='diamond') text=selectedChar==='male'?"that's right":"uwu";
+ else if (trigger==='milestone') text=lines[Math.floor(Math.random()*lines.length)];
+ if (text){
+ activeDialog={ text, timer:90, x:player.x+player.w/2, y:player.y };
  }
  }
 
- function triggerBusted() {
- busted = true;
- bustedFrame = 0;
- copY = -60;
- items = [];
- activeDialog = null;
+ function triggerBusted(){
+ busted=true; bustedFrame=0; copY=-60;
+ items=[]; activeDialog=null;
  }
 
- function update(dt) {
- if (activeDialog) {
- activeDialog.timer -= dt;
- activeDialog.x = player.x + player.w / 2;
- activeDialog.y = player.y;
- if (activeDialog.timer <= 0) activeDialog = null;
+ function triggerOvertime(){
+ overtime=true;
+ timeLeft=0;
+ timerEl.textContent='OT';
+ if (overtimeOverlay){
+ overtimeOverlay.classList.remove('hidden');
+ setTimeout(()=>overtimeOverlay.classList.add('hidden'),2500);
+ }
+ playOvertimeSound();
  }
 
- if (busted) {
- bustedFrame += dt;
- // Shake effect
- shakeX = Math.sin(bustedFrame * 0.8) * 3;
- shakeY = Math.cos(bustedFrame * 0.6) * 2;
- // Cop descends
- if (copY < player.y - 20) copY += 2.5 * dt;
- else {
- // Cop caught player - end game
- if (bustedFrame > 120) {
- endGame(true);
- return;
+ function update(dt){
+ if (activeDialog){
+ activeDialog.timer-=dt;
+ activeDialog.x=player.x+player.w/2;
+ activeDialog.y=player.y;
+ if (activeDialog.timer<=0) activeDialog=null;
  }
- }
- frame += dt;
- bgCycle += 0.0003 * dt;
+
+ if (busted){
+ bustedFrame+=dt;
+ shakeX=Math.sin(bustedFrame*0.8)*3;
+ shakeY=Math.cos(bustedFrame*0.6)*2;
+ if (copY<player.y-20) copY+=2.5*dt;
+ else if (bustedFrame>120){ endGame(true); return; }
+ frame+=dt; bgCycle+=0.0003*dt;
  return;
  }
 
- if (keys.left) player.x -= player.speed * dt;
- if (keys.right) player.x += player.speed * dt;
- player.x = Math.max(0, Math.min(W - player.w, player.x));
+ if (keys.left) player.x-=player.speed*dt;
+ if (keys.right) player.x+=player.speed*dt;
+ player.x=Math.max(0,Math.min(W-player.w,player.x));
+ bgCycle+=0.00025*dt;
 
- // Background cycle - very smooth
- bgCycle += 0.00025 * dt;
+ for (const c of clouds){ c.x+=c.speed*dt; if (c.x>W+60){ c.x=-c.w-20; c.y=15+Math.random()*(H/3); } }
+ for (const p of planes){ p.x+=p.speed*dt; if (p.x>W+50){ p.x=-80-Math.random()*150; p.y=25+Math.random()*70; } }
 
- // Clouds
- for (const c of clouds) {
- c.x += c.speed * dt;
- if (c.x > W + 60) { c.x = -c.w - 20; c.y = 15 + Math.random() * (H / 3); }
- }
- // Planes
- for (const p of planes) {
- p.x += p.speed * dt;
- if (p.x > W + 50) { p.x = -80 - Math.random() * 150; p.y = 25 + Math.random() * 70; }
- }
+ if (timeLeft===30 && score<300 && !busted){ triggerBusted(); return; }
 
- // Check busted condition at 30 seconds
- if (timeLeft === 30 && score < 300 && !busted) {
- triggerBusted();
- return;
- }
-
- // UFO 420 event trigger
- if (score >= 420 && !ufoEvent.triggered && !busted) {
- ufoEvent.triggered = true;
- ufoEvent.active = true;
- ufoEvent.timer = 300; // 5 seconds @ 60fps base
- ufoEvent.x = W / 2 - 30;
- ufoEvent.y = -50;
- ufoEvent.beamAlpha = 0;
- // Create abductee aliens
- ufoEvent.abductees = [];
- for (let i = 0; i < 4; i++) {
- ufoEvent.abductees.push({
- x: player.x + (Math.random() - 0.5) * 60,
- y: player.y + 10,
- vy: -1.5 - Math.random(),
- w: 10, h: 10,
- color: i % 2 === 0 ? '#7ec850' : '#c8e850'
- });
+ if (score>=420 && !ufoEvent.triggered && !busted){
+ ufoEvent.triggered=true; ufoEvent.active=true; ufoEvent.timer=300;
+ ufoEvent.x=W/2-30; ufoEvent.y=-50; ufoEvent.beamAlpha=0;
+ ufoEvent.abductees=[];
+ for (let i=0;i<4;i++){
+ ufoEvent.abductees.push({ x:player.x+(Math.random()-0.5)*60, y:player.y+10, vy:-1.5-Math.random(), w:10, h:10, color:i%2===0?'#7ec850':'#c8e850' });
  }
  }
 
- frame += dt;
- spawnAccumulator += dt;
- if (!busted && spawnAccumulator >= spawnRate) {
- spawnAccumulator = 0;
+ frame+=dt;
+ spawnAccumulator+=dt;
+ if (!busted && spawnAccumulator>=spawnRate){
+ spawnAccumulator=0;
  spawnItem();
  }
- // Every ~8 seconds increase difficulty, cap speedMult at 2.5x
- if (frame > 0 && Math.floor(frame / 480) > Math.floor((frame - dt) / 480)) {
- spawnRate = Math.max(18, spawnRate - 3);
- speedMult = Math.min(2.5, speedMult + 0.06);
+ if (frame>0 && Math.floor(frame/480)>Math.floor((frame-dt)/480)){
+ spawnRate=Math.max(18,spawnRate-3);
+ speedMult=Math.min(2.5,speedMult+0.06);
  }
 
- for (let i = items.length - 1; i >= 0; i--) {
- const it = items[i];
- it.y += it.vy * dt;
- it.x += Math.sin(frame * 0.025 + i) * 0.3 * dt;
- if (it.x > player.x + 4 && it.x < player.x + player.w - 4 && it.y > player.y + 8 && it.y < player.y + player.h) {
- score += it.type.score;
- scoreEl.textContent = score;
- addParticles(it.x, it.y, it.type.color);
+ for (let i=items.length-1;i>=0;i--){
+ const it=items[i];
+ it.y+=it.vy*dt;
+ it.x+=Math.sin(frame*0.025+i)*0.3*dt;
+ if (it.x>player.x+4 && it.x<player.x+player.w-4 && it.y>player.y+8 && it.y<player.y+player.h){
+ score+=it.type.score;
+ scoreEl.textContent=score;
+ addParticles(it.x,it.y,it.type.color);
  playPickupSound(it.type.text);
-
- if (it.type.text === '\uD83D\uDC8E') triggerDialog('diamond');
- const milestone = Math.floor(score / 100) * 100;
- if (milestone > lastMilestone && milestone >= 100) {
+ if (it.type.text==='\uD83D\uDC8E') triggerDialog('diamond');
+ const milestone=Math.floor(score/100)*100;
+ if (milestone>lastMilestone && milestone>=100){
  triggerDialog('milestone');
- lastMilestone = milestone;
+ lastMilestone=milestone;
  }
-
- items.splice(i, 1);
+ items.splice(i,1);
  continue;
  }
- if (it.y > H + 20) {
- if (overtime) {
+ if (it.y>H+20){
+ if (overtime){
  missedItems++;
- if (missedItems >= MISSES_PER_LIFE) {
- missedItems = 0;
- lives--;
+ if (missedItems>=MISSES_PER_LIFE){
+ missedItems=0; lives--;
  playLifeLostSound();
- if (livesEl) livesEl.textContent = '♥'.repeat(Math.max(0, lives));
- if (lives <= 0) { endGame(false); return; }
+ if (livesEl) livesEl.textContent='\u2665'.repeat(Math.max(0,lives));
+ if (lives<=0){ endGame(false); return; }
  }
  }
- items.splice(i, 1);
- }
- }
-
- // UFO event update
- if (ufoEvent.active) {
- ufoEvent.timer -= dt;
- // UFO descends
- if (ufoEvent.y < 45) ufoEvent.y += 1.2 * dt;
- else ufoEvent.beamAlpha = Math.min(ufoEvent.beamAlpha + 0.04 * dt, 0.55);
-
- // Abductees float up into beam
- for (const a of ufoEvent.abductees) {
- a.y += a.vy * dt;
- a.x += Math.sin(frame * 0.08 + a.y * 0.05) * 0.4 * dt;
- }
-
- // Auto-collect ALL items in the beam zone (full width under UFO)
- const beamLeft = ufoEvent.x - 40;
- const beamRight = ufoEvent.x + 100;
- for (let i = items.length - 1; i >= 0; i--) {
- const it = items[i];
- if (it.x > beamLeft && it.x < beamRight) {
- score += it.type.score;
- scoreEl.textContent = score;
- addParticles(it.x, it.y, it.type.color);
- items.splice(i, 1);
+ items.splice(i,1);
  }
  }
 
- if (ufoEvent.timer <= 0) {
- ufoEvent.active = false;
- ufoEvent.abductees = [];
+ if (ufoEvent.active){
+ ufoEvent.timer-=dt;
+ if (ufoEvent.y<45) ufoEvent.y+=1.2*dt;
+ else ufoEvent.beamAlpha=Math.min(ufoEvent.beamAlpha+0.04*dt,0.55);
+ for (const a of ufoEvent.abductees){
+ a.y+=a.vy*dt;
+ a.x+=Math.sin(frame*0.08+a.y*0.05)*0.4*dt;
+ }
+ const beamLeft=ufoEvent.x-40, beamRight=ufoEvent.x+100;
+ for (let i=items.length-1;i>=0;i--){
+ const it=items[i];
+ if (it.x>beamLeft && it.x<beamRight){
+ score+=it.type.score;
+ scoreEl.textContent=score;
+ addParticles(it.x,it.y,it.type.color);
+ items.splice(i,1);
+ }
+ }
+ if (ufoEvent.timer<=0){ ufoEvent.active=false; ufoEvent.abductees=[]; }
+ }
+
+ for (let i=particles.length-1;i>=0;i--){
+ const p=particles[i];
+ p.x+=p.vx*dt; p.y+=p.vy*dt;
+ p.vy+=0.12*dt;
+ p.life-=dt;
+ if (p.life<=0) particles.splice(i,1);
  }
  }
 
- for (let i = particles.length - 1; i >= 0; i--) {
- const p = particles[i];
- p.x += p.vx * dt; p.y += p.vy * dt;
- p.vy += 0.12 * dt;
- p.life -= dt;
- if (p.life <= 0) particles.splice(i, 1);
- }
- }
-
- function draw() {
+ function draw(){
  ctx.save();
- if (busted) {
- ctx.translate(shakeX, shakeY);
- }
- ctx.clearRect(-10, -10, W + 20, H + 20);
+ if (busted) ctx.translate(shakeX,shakeY);
+ ctx.clearRect(-10,-10,W+20,H+20);
  drawSky();
  if (ufoEvent.active) drawUFO();
  for (const it of items) drawItem(it);
- if (selectedChar === 'male') drawPlayer();
+ if (selectedChar==='male') drawPlayer();
  else drawAnimeGirl();
- if (busted) {
+ if (busted){
  drawPoliceLights();
  drawCop();
- // BUSTED text
- if (bustedFrame > 40) {
- ctx.font = 'bold 42px "Instrument Serif", Georgia, serif';
- ctx.textAlign = 'center';
- ctx.fillStyle = '#ff0000';
- ctx.fillText('BUSTED', W / 2, H / 2 - 30);
- ctx.font = '14px "DM Mono", monospace';
- ctx.fillStyle = '#ff6666';
- ctx.fillText('not enough points...', W / 2, H / 2 + 10);
+ if (bustedFrame>40){
+ ctx.font='bold 42px "Instrument Serif", Georgia, serif';
+ ctx.textAlign='center';
+ ctx.fillStyle='#ff0000';
+ ctx.fillText('BUSTED',W/2,H/2-30);
+ ctx.font='14px "DM Mono", monospace';
+ ctx.fillStyle='#ff6666';
+ ctx.fillText('not enough points...',W/2,H/2+10);
  }
  }
  drawDialog();
@@ -1207,135 +982,121 @@ function initGame() {
  ctx.restore();
  }
 
- function loop(timestamp) {
+ function loop(timestamp){
  if (!running) return;
- if (!lastTime) lastTime = timestamp;
- const rawDt = timestamp - lastTime;
- lastTime = timestamp;
- // Cap dt to avoid huge jumps when tab regains focus
- const dt = Math.min(rawDt / TARGET_DT, 3);
+ if (!lastTime) lastTime=timestamp;
+ const rawDt=timestamp-lastTime;
+ lastTime=timestamp;
+ const dt=Math.min(rawDt/TARGET_DT,3);
  update(dt);
  draw();
- animId = requestAnimationFrame(loop);
+ animId=requestAnimationFrame(loop);
  }
 
- function startGame() {
- score = 0; timeLeft = 60; frame = 0; bgCycle = 0; lastTime = 0;
- items = []; particles = []; busted = false; bustedFrame = 0; copY = -60;
- spawnRate = 42; speedMult = 1.0; activeDialog = null; lastMilestone = 0;
- spawnAccumulator = 0;
- lives = MAX_LIVES; missedItems = 0; overtime = false;
- ufoEvent = { active: false, triggered: false, timer: 0, x: -80, y: -50, beamAlpha: 0, abductees: [], rot: 0, beamParticles: [] };
- player.x = W / 2 - 20;
- scoreEl.textContent = '0';
- timerEl.textContent = '60';
- if (livesEl) livesEl.textContent = '♥'.repeat(MAX_LIVES);
+ function startGame(){
+ score=0; timeLeft=60; frame=0; bgCycle=0; lastTime=0;
+ items=[]; particles=[]; busted=false; bustedFrame=0; copY=-60;
+ spawnRate=42; speedMult=1.0; activeDialog=null; lastMilestone=0;
+ spawnAccumulator=0;
+ lives=MAX_LIVES; missedItems=0; overtime=false;
+ ufoEvent={active:false,triggered:false,timer:0,x:-80,y:-50,beamAlpha:0,abductees:[],rot:0,beamParticles:[]};
+ player.x=W/2-20;
+ scoreEl.textContent='0';
+ timerEl.textContent='60';
+ if (livesEl) livesEl.textContent='\u2665'.repeat(MAX_LIVES);
  startOverlay.classList.add('hidden');
  overOverlay.classList.add('hidden');
  if (overtimeOverlay) overtimeOverlay.classList.add('hidden');
- running = true;
- startMusic(selectedChar === 'male' ? 'male' : 'anime');
- animId = requestAnimationFrame(loop);
- timerId = setInterval(() => {
+ running=true;
+ startMusic(selectedChar==='male'?'male':'anime');
+ animId=requestAnimationFrame(loop);
+ timerId=setInterval(()=>{
  if (busted || overtime) return;
  timeLeft--;
- timerEl.textContent = timeLeft;
- if (timeLeft <= 0) {
- if (score >= 1000) triggerOvertime();
+ timerEl.textContent=timeLeft;
+ if (timeLeft<=0){
+ if (score>=1000) triggerOvertime();
  else endGame(false);
  }
- }, 1000);
+ },1000);
  }
 
- function triggerOvertime() {
- overtime = true;
- timeLeft = 0;
- timerEl.textContent = 'OT';
- if (overtimeOverlay) {
- overtimeOverlay.classList.remove('hidden');
- setTimeout(() => overtimeOverlay.classList.add('hidden'), 2500);
- }
- playOvertimeSound();
- }
-
- function endGame(isBusted) {
- running = false;
+ function endGame(isBusted){
+ running=false;
  cancelAnimationFrame(animId);
  clearInterval(timerId);
- if (isBusted) {
- finalScoreEl.innerHTML = 'BUSTED<br>score: ' + score + '';
- } else if (overtime && lives <= 0) {
- finalScoreEl.innerHTML = 'OVERTIME OVER<br>score: ' + score + '';
+ if (isBusted){
+ finalScoreEl.innerHTML='BUSTED<br>score: '+score;
+ } else if (overtime && lives<=0){
+ finalScoreEl.innerHTML='OVERTIME OVER<br>score: '+score;
  } else {
- finalScoreEl.textContent = 'score: ' + score;
+ finalScoreEl.textContent='score: '+score;
  }
  overOverlay.classList.remove('hidden');
- const prev = parseInt(localStorage.getItem('pls_highscore') || '0');
- if (score > prev) localStorage.setItem('pls_highscore', String(score));
+ const prev=parseInt(localStorage.getItem('pls_highscore')||'0');
+ if (score>prev) localStorage.setItem('pls_highscore',String(score));
  startMusic('menu');
  }
 
- function onKey(e, pressed) {
- if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = pressed;
- if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = pressed;
- // Spacebar intentionally disabled — use character buttons to start
+ function onKey(e,pressed){
+ if (e.key==='ArrowLeft' || e.key==='a' || e.key==='A') keys.left=pressed;
+ if (e.key==='ArrowRight' || e.key==='d' || e.key==='D') keys.right=pressed;
  }
 
- const keyDown = (e) => onKey(e, true);
- const keyUp = (e) => onKey(e, false);
- document.addEventListener('keydown', keyDown);
- document.addEventListener('keyup', keyUp);
+ const keyDown=(e)=>onKey(e,true);
+ const keyUp=(e)=>onKey(e,false);
+ document.addEventListener('keydown',keyDown);
+ document.addEventListener('keyup',keyUp);
 
- if (leftBtn) {
- const pressL = (e) => { e.preventDefault(); keys.left = true; };
- const relL = (e) => { e.preventDefault(); keys.left = false; };
- leftBtn.addEventListener('mousedown', pressL);
- leftBtn.addEventListener('mouseup', relL);
- leftBtn.addEventListener('mouseleave', relL);
- leftBtn.addEventListener('touchstart', pressL, { passive: false });
- leftBtn.addEventListener('touchend', relL);
+ if (leftBtn){
+ const pressL=(e)=>{e.preventDefault();keys.left=true;};
+ const relL=(e)=>{e.preventDefault();keys.left=false;};
+ leftBtn.addEventListener('mousedown',pressL);
+ leftBtn.addEventListener('mouseup',relL);
+ leftBtn.addEventListener('mouseleave',relL);
+ leftBtn.addEventListener('touchstart',pressL,{passive:false});
+ leftBtn.addEventListener('touchend',relL);
  }
- if (rightBtn) {
- const pressR = (e) => { e.preventDefault(); keys.right = true; };
- const relR = (e) => { e.preventDefault(); keys.right = false; };
- rightBtn.addEventListener('mousedown', pressR);
- rightBtn.addEventListener('mouseup', relR);
- rightBtn.addEventListener('mouseleave', relR);
- rightBtn.addEventListener('touchstart', pressR, { passive: false });
- rightBtn.addEventListener('touchend', relR);
+ if (rightBtn){
+ const pressR=(e)=>{e.preventDefault();keys.right=true;};
+ const relR=(e)=>{e.preventDefault();keys.right=false;};
+ rightBtn.addEventListener('mousedown',pressR);
+ rightBtn.addEventListener('mouseup',relR);
+ rightBtn.addEventListener('mouseleave',relR);
+ rightBtn.addEventListener('touchstart',pressR,{passive:false});
+ rightBtn.addEventListener('touchend',relR);
  }
 
- // Character selection
- const charBtns = startOverlay.querySelectorAll('.char-btn');
- charBtns.forEach(btn => {
- btn.addEventListener('click', () => {
- selectedChar = btn.dataset.char;
+ const charBtns=startOverlay.querySelectorAll('.char-btn');
+ charBtns.forEach(btn=>{
+ btn.addEventListener('click',()=>{
+ selectedChar=btn.dataset.char;
  startGame();
  });
  });
 
- restartBtn.addEventListener('click', () => {
+ restartBtn.addEventListener('click',()=>{
  startOverlay.classList.remove('hidden');
  overOverlay.classList.add('hidden');
  if (overtimeOverlay) overtimeOverlay.classList.add('hidden');
- running = false;
+ running=false;
  cancelAnimationFrame(animId);
  clearInterval(timerId);
  startMusic('menu');
  drawSky();
- if (selectedChar === 'male') drawPlayer();
+ if (selectedChar==='male') drawPlayer();
  else drawAnimeGirl();
  });
 
- dialog.addEventListener('close', () => {
- running = false;
+ dialog.addEventListener('close',()=>{
+ running=false;
  cancelAnimationFrame(animId);
  clearInterval(timerId);
- document.removeEventListener('keydown', keyDown);
- document.removeEventListener('keyup', keyUp);
+ document.removeEventListener('keydown',keyDown);
+ document.removeEventListener('keyup',keyUp);
  startMusic('menu');
- ufoEvent = { active: false, triggered: false, timer: 0, x: -80, y: -50, beamAlpha: 0, abductees: [], rot: 0, beamParticles: [] };
- }, { once: true });
+ ufoEvent={active:false,triggered:false,timer:0,x:-80,y:-50,beamAlpha:0,abductees:[],rot:0,beamParticles:[]};
+ },{once:true});
 
  drawSky();
  drawPlayer();
