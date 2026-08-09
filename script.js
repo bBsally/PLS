@@ -287,7 +287,7 @@ function initGame() {
  const W = 640, H = 480;
  let running = false, score = 0, timeLeft = 60, frame = 0;
  let items = [], particles = [], clouds = [], planes = [];
- let spawnRate = 60, speedMult = 1.0;
+ let spawnRate = 45, speedMult = 1.0;
  let keys = { left: false, right: false };
  let animId, timerId;
  let bgCycle = 0; // 0..1 continuous cycle
@@ -298,6 +298,7 @@ function initGame() {
  let activeDialog = null; // { text, timer, x, y }
  let lastMilestone = 0;
  let lastTime = 0;
+ let spawnAccumulator = 0;
  const TARGET_DT = 1000 / 60; // 16.67ms per frame at 60fps
 
  // Player (pixel head with dreads, beanie, shades)
@@ -832,16 +833,21 @@ function initGame() {
  }
 
  // Check busted condition at 30 seconds
- if (timeLeft === 30 && score < 400 && !busted) {
+ if (timeLeft === 30 && score < 300 && !busted) {
  triggerBusted();
  return;
  }
 
  frame += dt;
- if (!busted && frame % Math.max(40, Math.floor(spawnRate)) < dt) spawnItem();
- if (frame % 500 < dt) {
- spawnRate = Math.max(30, spawnRate - 4);
- speedMult += 0.03;
+ spawnAccumulator += dt;
+ if (!busted && spawnAccumulator >= spawnRate) {
+ spawnAccumulator = 0;
+ spawnItem();
+ }
+ // Every ~8 seconds increase difficulty
+ if (frame > 0 && Math.floor(frame / 480) > Math.floor((frame - dt) / 480)) {
+ spawnRate = Math.max(22, spawnRate - 3);
+ speedMult += 0.04;
  }
 
  for (let i = items.length - 1; i >= 0; i--) {
@@ -923,7 +929,8 @@ function initGame() {
  function startGame() {
  score = 0; timeLeft = 60; frame = 0; bgCycle = 0; lastTime = 0;
  items = []; particles = []; busted = false; bustedFrame = 0; copY = -60;
- spawnRate = 60; speedMult = 1.0; activeDialog = null; lastMilestone = 0;
+ spawnRate = 45; speedMult = 1.0; activeDialog = null; lastMilestone = 0;
+ spawnAccumulator = 0;
  player.x = W / 2 - 20;
  scoreEl.textContent = '0';
  timerEl.textContent = '60';
@@ -956,11 +963,7 @@ function initGame() {
  function onKey(e, pressed) {
  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = pressed;
  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = pressed;
- if (pressed && e.key === ' ' && !running && overOverlay.classList.contains('hidden')) {
- if (!startOverlay.classList.contains('hidden')) {
- // Space on char select does nothing now - must click a character
- }
- }
+ // Spacebar intentionally disabled — use character buttons to start
  }
 
  const keyDown = (e) => onKey(e, true);
