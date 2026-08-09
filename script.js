@@ -301,6 +301,9 @@ function initGame() {
  let spawnAccumulator = 0;
  const TARGET_DT = 1000 / 60; // 16.67ms per frame at 60fps
 
+ // UFO 420 event
+ let ufoEvent = { active: false, triggered: false, timer: 0, x: -80, y: -50, beamAlpha: 0, abductees: [] };
+
  // Player (pixel head with dreads, beanie, shades)
  const player = { x: W / 2 - 20, y: H - 52, w: 40, h: 42, speed: 5 };
 
@@ -459,13 +462,66 @@ function initGame() {
  for (const [bx, bh] of buildings) {
  drawPixelRect(bx, H - bh, 35, bh, cityColor);
  }
- // Windows
+ // Windows — drawn per-building so they don't bleed
  ctx.fillStyle = pal.win;
- for (let wx = 10; wx < W; wx += 38) {
- for (let wy = H - 45; wy < H - 5; wy += 10) {
- if ((wx * 7 + wy * 3) % 11 < 5) ctx.fillRect(wx, wy, 3, 4);
+ for (const [bx, bh] of buildings) {
+ for (let wx = bx + 4; wx < bx + 31; wx += 7) {
+ for (let wy = H - bh + 5; wy < H - 4; wy += 9) {
+ if ((wx * 7 + wy * 3 + bx) % 13 < 6) ctx.fillRect(wx, wy, 3, 4);
  }
  }
+ }
+ }
+
+ function drawUFO() {
+ const ux = ufoEvent.x;
+ const uy = ufoEvent.y;
+
+ // Beam
+ if (ufoEvent.beamAlpha > 0) {
+ ctx.fillStyle = `rgba(120, 255, 80, ${ufoEvent.beamAlpha * 0.25})`;
+ ctx.beginPath();
+ ctx.moveTo(ux + 15, uy + 14);
+ ctx.lineTo(ux - 25, H - 35);
+ ctx.lineTo(ux + 55, H - 35);
+ ctx.closePath();
+ ctx.fill();
+ ctx.strokeStyle = `rgba(120, 255, 80, ${ufoEvent.beamAlpha * 0.5})`;
+ ctx.lineWidth = 1;
+ ctx.stroke();
+ }
+
+ // UFO body
+ drawPixelRect(ux, uy, 60, 14, '#6a6a6a');
+ drawPixelRect(ux + 5, uy - 4, 50, 10, '#8a8a8a');
+ drawPixelRect(ux + 18, uy - 8, 24, 8, '#a0c0d0'); // dome
+
+ // Lights
+ const lightColors = ['#ff3333', '#33ff33', '#ffff33', '#33ffff', '#ff33ff'];
+ for (let i = 0; i < 5; i++) {
+ const on = Math.floor(frame * 0.15 + i) % 5 < 2;
+ drawPixelRect(ux + 6 + i * 10, uy + 4, 5, 5, on ? lightColors[i] : '#444');
+ }
+
+ // Abductees (chained aliens rapping)
+ for (const a of ufoEvent.abductees) {
+ // Body
+ drawPixelRect(a.x, a.y, a.w, a.h, a.color);
+ // Eyes
+ drawPixelRect(a.x + 2, a.y + 2, 2, 2, '#000');
+ drawPixelRect(a.x + 6, a.y + 2, 2, 2, '#000');
+ // Chain
+ drawPixelRect(a.x + 2, a.y + a.h, a.w - 4, 2, '#c0c0c0');
+ // Mic
+ drawPixelRect(a.x + a.w, a.y + 3, 3, 2, '#333');
+ drawPixelRect(a.x + a.w + 2, a.y + 1, 2, 4, '#888');
+ }
+
+ // 420 text on UFO
+ ctx.font = 'bold 10px "DM Mono", monospace';
+ ctx.fillStyle = '#33ff33';
+ ctx.textAlign = 'center';
+ ctx.fillText('420', ux + 30, uy + 11);
  }
 
  function drawPlayer() {
@@ -838,6 +894,27 @@ function initGame() {
  return;
  }
 
+ // UFO 420 event trigger
+ if (score >= 420 && !ufoEvent.triggered && !busted) {
+ ufoEvent.triggered = true;
+ ufoEvent.active = true;
+ ufoEvent.timer = 300; // 5 seconds @ 60fps base
+ ufoEvent.x = W / 2 - 30;
+ ufoEvent.y = -50;
+ ufoEvent.beamAlpha = 0;
+ // Create abductee aliens
+ ufoEvent.abductees = [];
+ for (let i = 0; i < 4; i++) {
+ ufoEvent.abductees.push({
+ x: player.x + (Math.random() - 0.5) * 60,
+ y: player.y + 10,
+ vy: -1.5 - Math.random(),
+ w: 10, h: 10,
+ color: i % 2 === 0 ? '#7ec850' : '#c8e850'
+ });
+ }
+ }
+
  frame += dt;
  spawnAccumulator += dt;
  if (!busted && spawnAccumulator >= spawnRate) {
@@ -876,6 +953,38 @@ function initGame() {
  if (it.y > H + 20) items.splice(i, 1);
  }
 
+ // UFO event update
+ if (ufoEvent.active) {
+ ufoEvent.timer -= dt;
+ // UFO descends
+ if (ufoEvent.y < 45) ufoEvent.y += 1.2 * dt;
+ else ufoEvent.beamAlpha = Math.min(ufoEvent.beamAlpha + 0.04 * dt, 0.55);
+
+ // Abductees float up into beam
+ for (const a of ufoEvent.abductees) {
+ a.y += a.vy * dt;
+ a.x += Math.sin(frame * 0.08 + a.y * 0.05) * 0.4 * dt;
+ }
+
+ // Auto-collect ALL items in the beam zone (full width under UFO)
+ const beamLeft = ufoEvent.x - 40;
+ const beamRight = ufoEvent.x + 100;
+ for (let i = items.length - 1; i >= 0; i--) {
+ const it = items[i];
+ if (it.x > beamLeft && it.x < beamRight) {
+ score += it.type.score;
+ scoreEl.textContent = score;
+ addParticles(it.x, it.y, it.type.color);
+ items.splice(i, 1);
+ }
+ }
+
+ if (ufoEvent.timer <= 0) {
+ ufoEvent.active = false;
+ ufoEvent.abductees = [];
+ }
+ }
+
  for (let i = particles.length - 1; i >= 0; i--) {
  const p = particles[i];
  p.x += p.vx * dt; p.y += p.vy * dt;
@@ -892,6 +1001,7 @@ function initGame() {
  }
  ctx.clearRect(-10, -10, W + 20, H + 20);
  drawSky();
+ if (ufoEvent.active) drawUFO();
  for (const it of items) drawItem(it);
  if (selectedChar === 'male') drawPlayer();
  else drawAnimeGirl();
@@ -931,6 +1041,7 @@ function initGame() {
  items = []; particles = []; busted = false; bustedFrame = 0; copY = -60;
  spawnRate = 45; speedMult = 1.0; activeDialog = null; lastMilestone = 0;
  spawnAccumulator = 0;
+ ufoEvent = { active: false, triggered: false, timer: 0, x: -80, y: -50, beamAlpha: 0, abductees: [] };
  player.x = W / 2 - 20;
  scoreEl.textContent = '0';
  timerEl.textContent = '60';
@@ -1017,6 +1128,7 @@ function initGame() {
  clearInterval(timerId);
  document.removeEventListener('keydown', keyDown);
  document.removeEventListener('keyup', keyUp);
+ ufoEvent = { active: false, triggered: false, timer: 0, x: -80, y: -50, beamAlpha: 0, abductees: [] };
  }, { once: true });
 
  drawSky();
