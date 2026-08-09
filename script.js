@@ -287,7 +287,7 @@ function initGame() {
  const W = 640, H = 480;
  let running = false, score = 0, timeLeft = 60, frame = 0;
  let items = [], particles = [], clouds = [], planes = [];
- let spawnRate = 100, speedMult = 0.45;
+ let spawnRate = 60, speedMult = 1.0;
  let keys = { left: false, right: false };
  let animId, timerId;
  let bgCycle = 0; // 0..1 continuous cycle
@@ -297,9 +297,11 @@ function initGame() {
  let selectedChar = 'male';
  let activeDialog = null; // { text, timer, x, y }
  let lastMilestone = 0;
+ let lastTime = 0;
+ const TARGET_DT = 1000 / 60; // 16.67ms per frame at 60fps
 
  // Player (pixel head with dreads, beanie, shades)
- const player = { x: W / 2 - 20, y: H - 52, w: 40, h: 42, speed: 4 };
+ const player = { x: W / 2 - 20, y: H - 52, w: 40, h: 42, speed: 5 };
 
  // Dialog lines
  const maleLines = [
@@ -311,13 +313,13 @@ function initGame() {
   "desu~", "honto", "ganbaru", "sugoi ne"
  ];
 
- // Item types - VERY SLOW
+ // Item types — speeds are px per frame @ 60fps, scaled by dt
  const itemTypes = [
- { text: '$', score: 10, color: '#617858', chance: 0.35, size: 18, speed: 0.7 },
- { text: 'PL', score: 10, color: '#4d5c47', chance: 0.30, size: 16, speed: 0.8 },
- { text: '\uD83D\uDD0A', score: 15, color: '#d4a574', chance: 0.18, size: 20, speed: 0.9 },
- { text: '\uD83C\uDFA4', score: 30, color: '#c4b8ad', chance: 0.12, size: 20, speed: 1.0 },
- { text: '\uD83D\uDC8E', score: 50, color: '#7ec8e3', chance: 0.05, size: 20, speed: 1.1 },
+ { text: '$', score: 10, color: '#617858', chance: 0.35, size: 18, speed: 2.2 },
+ { text: 'PL', score: 10, color: '#4d5c47', chance: 0.30, size: 16, speed: 2.5 },
+ { text: '\uD83D\uDD0A', score: 15, color: '#d4a574', chance: 0.18, size: 20, speed: 2.8 },
+ { text: '\uD83C\uDFA4', score: 30, color: '#c4b8ad', chance: 0.12, size: 20, speed: 3.2 },
+ { text: '\uD83D\uDC8E', score: 50, color: '#7ec8e3', chance: 0.05, size: 20, speed: 3.6 },
  ];
 
  // Palettes for smooth sky cycle
@@ -352,11 +354,11 @@ function initGame() {
 
  // Init clouds
  for (let i = 0; i < 6; i++) {
- clouds.push({ x: Math.random() * W, y: 15 + Math.random() * (H / 3), w: 45 + Math.random() * 75, h: 10 + Math.random() * 14, speed: 0.12 + Math.random() * 0.2 });
+ clouds.push({ x: Math.random() * W, y: 15 + Math.random() * (H / 3), w: 45 + Math.random() * 75, h: 10 + Math.random() * 14, speed: 0.25 + Math.random() * 0.35 });
  }
  // Init planes
  for (let i = 0; i < 2; i++) {
- planes.push({ x: -80 - Math.random() * 300, y: 25 + Math.random() * 70, speed: 0.6 + Math.random() * 0.5 });
+ planes.push({ x: -80 - Math.random() * 300, y: 25 + Math.random() * 70, speed: 1.2 + Math.random() * 1.0 });
  }
 
  function drawPixelRect(x, y, w, h, color) {
@@ -784,21 +786,21 @@ function initGame() {
  activeDialog = null;
  }
 
- function update() {
+ function update(dt) {
  if (activeDialog) {
- activeDialog.timer--;
+ activeDialog.timer -= dt;
  activeDialog.x = player.x + player.w / 2;
  activeDialog.y = player.y;
  if (activeDialog.timer <= 0) activeDialog = null;
  }
 
  if (busted) {
- bustedFrame++;
+ bustedFrame += dt;
  // Shake effect
  shakeX = Math.sin(bustedFrame * 0.8) * 3;
  shakeY = Math.cos(bustedFrame * 0.6) * 2;
  // Cop descends
- if (copY < player.y - 20) copY += 2.5;
+ if (copY < player.y - 20) copY += 2.5 * dt;
  else {
  // Cop caught player - end game
  if (bustedFrame > 120) {
@@ -806,26 +808,26 @@ function initGame() {
  return;
  }
  }
- frame++;
- bgCycle += 0.0003;
+ frame += dt;
+ bgCycle += 0.0003 * dt;
  return;
  }
 
- if (keys.left) player.x -= player.speed;
- if (keys.right) player.x += player.speed;
+ if (keys.left) player.x -= player.speed * dt;
+ if (keys.right) player.x += player.speed * dt;
  player.x = Math.max(0, Math.min(W - player.w, player.x));
 
  // Background cycle - very smooth
- bgCycle += 0.00025;
+ bgCycle += 0.00025 * dt;
 
  // Clouds
  for (const c of clouds) {
- c.x += c.speed;
+ c.x += c.speed * dt;
  if (c.x > W + 60) { c.x = -c.w - 20; c.y = 15 + Math.random() * (H / 3); }
  }
  // Planes
  for (const p of planes) {
- p.x += p.speed;
+ p.x += p.speed * dt;
  if (p.x > W + 50) { p.x = -80 - Math.random() * 150; p.y = 25 + Math.random() * 70; }
  }
 
@@ -835,17 +837,17 @@ function initGame() {
  return;
  }
 
- frame++;
- if (!busted && frame % Math.max(40, Math.floor(spawnRate)) === 0) spawnItem();
- if (frame % 500 === 0) {
+ frame += dt;
+ if (!busted && frame % Math.max(40, Math.floor(spawnRate)) < dt) spawnItem();
+ if (frame % 500 < dt) {
  spawnRate = Math.max(30, spawnRate - 4);
  speedMult += 0.03;
  }
 
  for (let i = items.length - 1; i >= 0; i--) {
  const it = items[i];
- it.y += it.vy;
- it.x += Math.sin(frame * 0.025 + i) * 0.3;
+ it.y += it.vy * dt;
+ it.x += Math.sin(frame * 0.025 + i) * 0.3 * dt;
  if (it.x > player.x + 4 && it.x < player.x + player.w - 4 && it.y > player.y + 8 && it.y < player.y + player.h) {
  score += it.type.score;
  scoreEl.textContent = score;
@@ -870,9 +872,9 @@ function initGame() {
 
  for (let i = particles.length - 1; i >= 0; i--) {
  const p = particles[i];
- p.x += p.vx; p.y += p.vy;
- p.vy += 0.12;
- p.life--;
+ p.x += p.vx * dt; p.y += p.vy * dt;
+ p.vy += 0.12 * dt;
+ p.life -= dt;
  if (p.life <= 0) particles.splice(i, 1);
  }
  }
@@ -906,23 +908,29 @@ function initGame() {
  ctx.restore();
  }
 
- function loop() {
+ function loop(timestamp) {
  if (!running) return;
- update(); draw();
+ if (!lastTime) lastTime = timestamp;
+ const rawDt = timestamp - lastTime;
+ lastTime = timestamp;
+ // Cap dt to avoid huge jumps when tab regains focus
+ const dt = Math.min(rawDt / TARGET_DT, 3);
+ update(dt);
+ draw();
  animId = requestAnimationFrame(loop);
  }
 
  function startGame() {
- score = 0; timeLeft = 60; frame = 0; bgCycle = 0;
+ score = 0; timeLeft = 60; frame = 0; bgCycle = 0; lastTime = 0;
  items = []; particles = []; busted = false; bustedFrame = 0; copY = -60;
- spawnRate = 100; speedMult = 0.45; activeDialog = null; lastMilestone = 0;
+ spawnRate = 60; speedMult = 1.0; activeDialog = null; lastMilestone = 0;
  player.x = W / 2 - 20;
  scoreEl.textContent = '0';
  timerEl.textContent = '60';
  startOverlay.classList.add('hidden');
  overOverlay.classList.add('hidden');
  running = true;
- loop();
+ animId = requestAnimationFrame(loop);
  timerId = setInterval(() => {
  if (busted) return;
  timeLeft--;
