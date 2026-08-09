@@ -113,6 +113,7 @@
           <div class="game-ui">
             <div class="game-stats">
               <span id="game-score">0</span>
+              <span id="game-lives">♥♥♥♥</span>
               <span id="game-timer">60</span>
             </div>
             <div class="game-overlay" id="game-start">
@@ -133,10 +134,22 @@
               <p id="game-final-score">score: 0</p>
               <button class="outline-button" id="game-restart-btn">RESTART</button>
             </div>
+            <div class="game-overlay hidden" id="game-overtime">
+              <p>OVERTIME</p>
+              <p id="game-overtime-msg">1000+ pts — survive!</p>
+            </div>
           </div>
           <div class="game-mobile-controls">
             <button id="game-left">◀</button>
             <button id="game-right">▶</button>
+          </div>
+          <div class="game-volume">
+            <label>music
+              <input type="range" id="vol-music" min="0" max="100" value="70">
+            </label>
+            <label>sfx
+              <input type="range" id="vol-sfx" min="0" max="100" value="80">
+            </label>
           </div>
         </div>
         <div class="game-info">
@@ -149,6 +162,9 @@
         </div>
       </article>
     </template>
+    <audio id="audio-menu" src="ndy 140.mp3" loop preload="auto"></audio>
+    <audio id="audio-male" src="noir type beat.mp3" loop preload="auto"></audio>
+    <audio id="audio-anime" src="BIG SALLY.mp3" loop preload="auto"></audio>
     <script src="script.js"></script>
   </body>
 </html>

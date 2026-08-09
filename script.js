@@ -270,6 +270,91 @@ function initCarousel() {
  updateSlides();
 }
 
+/* ===== AUDIO ===== */
+function initAudio() {
+ if (!audioCtx) {
+ try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+ }
+}
+
+function playPickupSound(type) {
+ if (!audioCtx || volSfx <= 0) return;
+ try {
+ const osc = audioCtx.createOscillator();
+ const gain = audioCtx.createGain();
+ osc.connect(gain);
+ gain.connect(audioCtx.destination);
+ const freqs = { '$': 520, 'PL': 580, 'spk': 720, 'mic': 880, 'dia': 1100 };
+ const key = type === '\uD83D\uDD0A' ? 'spk' : type === '\uD83C\uDFA4' ? 'mic' : type === '\uD83D\uDC8E' ? 'dia' : type;
+ osc.frequency.value = freqs[key] || 600;
+ osc.type = key === 'dia' ? 'square' : 'sine';
+ gain.gain.setValueAtTime(volSfx * 0.12, audioCtx.currentTime);
+ gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+ osc.start(audioCtx.currentTime);
+ osc.stop(audioCtx.currentTime + 0.12);
+ } catch(e) {}
+}
+
+function playLifeLostSound() {
+ if (!audioCtx || volSfx <= 0) return;
+ try {
+ const osc = audioCtx.createOscillator();
+ const gain = audioCtx.createGain();
+ osc.connect(gain);
+ gain.connect(audioCtx.destination);
+ osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+ osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+ osc.type = 'sawtooth';
+ gain.gain.setValueAtTime(volSfx * 0.15, audioCtx.currentTime);
+ gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+ osc.start(audioCtx.currentTime);
+ osc.stop(audioCtx.currentTime + 0.3);
+ } catch(e) {}
+}
+
+function playOvertimeSound() {
+ if (!audioCtx || volSfx <= 0) return;
+ try {
+ for (let i = 0; i < 3; i++) {
+ const osc = audioCtx.createOscillator();
+ const gain = audioCtx.createGain();
+ osc.connect(gain);
+ gain.connect(audioCtx.destination);
+ osc.frequency.value = 440 + i * 110;
+ osc.type = 'square';
+ gain.gain.setValueAtTime(volSfx * 0.08, audioCtx.currentTime + i * 0.1);
+ gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.1 + 0.2);
+ osc.start(audioCtx.currentTime + i * 0.1);
+ osc.stop(audioCtx.currentTime + i * 0.1 + 0.2);
+ }
+ } catch(e) {}
+}
+
+function setMusicVolume(v) {
+ volMusic = v;
+ if (menuMusic) menuMusic.volume = v;
+ if (gameMusic) gameMusic.volume = v;
+}
+
+function setSfxVolume(v) {
+ volSfx = v;
+}
+
+function startMusic(track) {
+ if (menuMusic) { menuMusic.pause(); menuMusic.currentTime = 0; }
+ if (gameMusic) { gameMusic.pause(); gameMusic.currentTime = 0; }
+ if (track === 'menu') {
+ menuMusic = document.getElementById('audio-menu');
+ if (menuMusic) { menuMusic.volume = volMusic; menuMusic.play().catch(()=>{}); }
+ } else if (track === 'male') {
+ gameMusic = document.getElementById('audio-male');
+ if (gameMusic) { gameMusic.volume = volMusic; gameMusic.play().catch(()=>{}); }
+ } else if (track === 'anime') {
+ gameMusic = document.getElementById('audio-anime');
+ if (gameMusic) { gameMusic.volume = volMusic; gameMusic.play().catch(()=>{}); }
+ }
+}
+
 /* ===== PL$ DROP GAME ===== */
 function initGame() {
  const canvas = document.getElementById('game-canvas');
@@ -277,12 +362,22 @@ function initGame() {
  const ctx = canvas.getContext('2d');
  const scoreEl = document.getElementById('game-score');
  const timerEl = document.getElementById('game-timer');
+ const livesEl = document.getElementById('game-lives');
  const startOverlay = document.getElementById('game-start');
  const overOverlay = document.getElementById('game-over');
+ const overtimeOverlay = document.getElementById('game-overtime');
  const finalScoreEl = document.getElementById('game-final-score');
  const restartBtn = document.getElementById('game-restart-btn');
  const leftBtn = document.getElementById('game-left');
  const rightBtn = document.getElementById('game-right');
+
+ initAudio();
+ startMusic('menu');
+
+ const volMusicSlider = document.getElementById('vol-music');
+ const volSfxSlider = document.getElementById('vol-sfx');
+ if (volMusicSlider) volMusicSlider.addEventListener('input', (e) => setMusicVolume(e.target.value / 100));
+ if (volSfxSlider) volSfxSlider.addEventListener('input', (e) => setSfxVolume(e.target.value / 100));
 
  const W = 640, H = 480;
  let running = false, score = 0, timeLeft = 60, frame = 0;
@@ -295,14 +390,24 @@ function initGame() {
  let copY = -60;
  let shakeX = 0, shakeY = 0;
  let selectedChar = 'male';
- let activeDialog = null; // { text, timer, x, y }
+ let activeDialog = null;
  let lastMilestone = 0;
  let lastTime = 0;
  let spawnAccumulator = 0;
- const TARGET_DT = 1000 / 60; // 16.67ms per frame at 60fps
+ const TARGET_DT = 1000 / 60;
+
+ // Lives & overtime
+ let lives = 4;
+ let missedItems = 0;
+ let overtime = false;
+ const MAX_LIVES = 4;
+ const MISSES_PER_LIFE = 5;
+
+ // Audio globals (declared in audio block)
+ // let audioCtx, menuMusic, gameMusic, volMusic, volSfx;
 
  // UFO 420 event
- let ufoEvent = { active: false, triggered: false, timer: 0, x: -80, y: -50, beamAlpha: 0, abductees: [] };
+ let ufoEvent = { active: false, triggered: false, timer: 0, x: -80, y: -50, beamAlpha: 0, abductees: [], rot: 0, beamParticles: [] };
 
  // Player (pixel head with dreads, beanie, shades)
  const player = { x: W / 2 - 20, y: H - 52, w: 40, h: 42, speed: 5 };
@@ -319,11 +424,11 @@ function initGame() {
 
  // Item types — speeds are px per frame @ 60fps, scaled by dt
  const itemTypes = [
- { text: '$', score: 10, color: '#617858', chance: 0.35, size: 18, speed: 2.2 },
- { text: 'PL', score: 10, color: '#4d5c47', chance: 0.30, size: 16, speed: 2.5 },
- { text: '\uD83D\uDD0A', score: 15, color: '#d4a574', chance: 0.18, size: 20, speed: 2.8 },
- { text: '\uD83C\uDFA4', score: 30, color: '#c4b8ad', chance: 0.12, size: 20, speed: 3.2 },
- { text: '\uD83D\uDC8E', score: 50, color: '#7ec8e3', chance: 0.05, size: 20, speed: 3.6 },
+ { text: '$', score: 10, color: '#617858', chance: 0.35, size: 18, speed: 2.5 },
+ { text: 'PL', score: 10, color: '#4d5c47', chance: 0.30, size: 16, speed: 2.8 },
+ { text: '\uD83D\uDD0A', score: 15, color: '#d4a574', chance: 0.18, size: 20, speed: 3.1 },
+ { text: '\uD83C\uDFA4', score: 30, color: '#c4b8ad', chance: 0.12, size: 20, speed: 3.5 },
+ { text: '\uD83D\uDC8E', score: 50, color: '#7ec8e3', chance: 0.05, size: 20, speed: 3.9 },
  ];
 
  // Palettes for smooth sky cycle
@@ -476,52 +581,121 @@ function initGame() {
  function drawUFO() {
  const ux = ufoEvent.x;
  const uy = ufoEvent.y;
+ ufoEvent.rot += 0.03;
 
- // Beam
+ // Beam with animated particles
  if (ufoEvent.beamAlpha > 0) {
- ctx.fillStyle = `rgba(120, 255, 80, ${ufoEvent.beamAlpha * 0.25})`;
+ const bAlpha = ufoEvent.beamAlpha;
+ // Main beam cone
+ ctx.fillStyle = `rgba(100, 255, 80, ${bAlpha * 0.18})`;
  ctx.beginPath();
  ctx.moveTo(ux + 15, uy + 14);
- ctx.lineTo(ux - 25, H - 35);
- ctx.lineTo(ux + 55, H - 35);
+ ctx.lineTo(ux - 35, H - 30);
+ ctx.lineTo(ux + 65, H - 30);
  ctx.closePath();
  ctx.fill();
- ctx.strokeStyle = `rgba(120, 255, 80, ${ufoEvent.beamAlpha * 0.5})`;
+ // Inner beam
+ ctx.fillStyle = `rgba(140, 255, 120, ${bAlpha * 0.12})`;
+ ctx.beginPath();
+ ctx.moveTo(ux + 15, uy + 14);
+ ctx.lineTo(ux - 15, H - 30);
+ ctx.lineTo(ux + 45, H - 30);
+ ctx.closePath();
+ ctx.fill();
+ // Beam border
+ ctx.strokeStyle = `rgba(120, 255, 80, ${bAlpha * 0.45})`;
  ctx.lineWidth = 1;
+ ctx.beginPath();
+ ctx.moveTo(ux + 15, uy + 14);
+ ctx.lineTo(ux - 35, H - 30);
  ctx.stroke();
+ ctx.beginPath();
+ ctx.moveTo(ux + 15, uy + 14);
+ ctx.lineTo(ux + 65, H - 30);
+ ctx.stroke();
+
+ // Floating particles in beam
+ for (let i = 0; i < 8; i++) {
+ const py = uy + 20 + (frame * 2 + i * 40) % (H - uy - 50);
+ const px = ux + 15 + Math.sin(frame * 0.05 + i * 0.8) * (py - uy) * 0.4;
+ const ps = 1 + Math.sin(frame * 0.1 + i) * 0.5;
+ ctx.fillStyle = `rgba(150, 255, 100, ${bAlpha * 0.6})`;
+ ctx.fillRect(px, py, ps, ps);
+ }
  }
 
- // UFO body
- drawPixelRect(ux, uy, 60, 14, '#6a6a6a');
- drawPixelRect(ux + 5, uy - 4, 50, 10, '#8a8a8a');
- drawPixelRect(ux + 18, uy - 8, 24, 8, '#a0c0d0'); // dome
+ // UFO shadow / glow underneath
+ ctx.fillStyle = 'rgba(100,255,80,0.08)';
+ ctx.fillRect(ux - 10, uy + 12, 80, 6);
 
- // Lights
- const lightColors = ['#ff3333', '#33ff33', '#ffff33', '#33ffff', '#ff33ff'];
- for (let i = 0; i < 5; i++) {
- const on = Math.floor(frame * 0.15 + i) % 5 < 2;
- drawPixelRect(ux + 6 + i * 10, uy + 4, 5, 5, on ? lightColors[i] : '#444');
+ // UFO saucer (rotating disc effect via offset lights)
+ drawPixelRect(ux, uy, 60, 14, '#5a5a5a');
+ drawPixelRect(ux + 2, uy + 2, 56, 10, '#707070');
+ // Dome
+ drawPixelRect(ux + 16, uy - 9, 28, 12, '#b0d0e0');
+ drawPixelRect(ux + 20, uy - 7, 20, 8, '#c8e4f0');
+ // Dome reflection
+ drawPixelRect(ux + 22, uy - 5, 6, 3, '#ffffff');
+
+ // Ring lights (animated chase)
+ const lightColors = ['#ff3333', '#ff9933', '#ffff33', '#33ff33', '#33ffff', '#ff33ff'];
+ for (let i = 0; i < 6; i++) {
+ const offset = Math.floor(frame * 0.12) % 6;
+ const on = (i + offset) % 6 < 3;
+ const lx = ux + 5 + i * 9;
+ drawPixelRect(lx, uy + 3, 6, 6, on ? lightColors[i] : '#444');
+ if (on) {
+ ctx.fillStyle = lightColors[i] + '22';
+ ctx.fillRect(lx - 2, uy + 1, 10, 10);
+ }
  }
 
- // Abductees (chained aliens rapping)
- for (const a of ufoEvent.abductees) {
- // Body
- drawPixelRect(a.x, a.y, a.w, a.h, a.color);
- // Eyes
- drawPixelRect(a.x + 2, a.y + 2, 2, 2, '#000');
- drawPixelRect(a.x + 6, a.y + 2, 2, 2, '#000');
+ // Antenna
+ drawPixelRect(ux + 14, uy - 13, 2, 5, '#888');
+ drawPixelRect(ux + 13, uy - 15, 4, 3, '#ff3333');
+ if (frame % 20 < 10) {
+ ctx.fillStyle = 'rgba(255,50,50,0.3)';
+ ctx.fillRect(ux + 10, uy - 18, 10, 10);
+ }
+
+ // Abductees (chained aliens rapping with animation)
+ for (let i = 0; i < ufoEvent.abductees.length; i++) {
+ const a = ufoEvent.abductees[i];
+ const bob = Math.sin(frame * 0.08 + i * 1.5) * 2;
+ const ax = a.x + Math.sin(frame * 0.05 + i) * 1.5;
+ const ay = a.y + bob;
+
+ // Body (classic grey alien shape)
+ drawPixelRect(ax, ay, 10, 10, a.color);
+ drawPixelRect(ax + 1, ay - 2, 8, 3, a.color); // head bulge
+ // Big black eyes
+ drawPixelRect(ax + 1, ay + 2, 3, 3, '#000');
+ drawPixelRect(ax + 6, ay + 2, 3, 3, '#000');
+ // Eye shine
+ drawPixelRect(ax + 2, ay + 3, 1, 1, '#fff');
+ drawPixelRect(ax + 7, ay + 3, 1, 1, '#fff');
+ // Mouth (rapping — open/closed)
+ if (Math.floor(frame * 0.1 + i) % 4 < 2) {
+ drawPixelRect(ax + 4, ay + 6, 2, 1, '#000');
+ }
  // Chain
- drawPixelRect(a.x + 2, a.y + a.h, a.w - 4, 2, '#c0c0c0');
- // Mic
- drawPixelRect(a.x + a.w, a.y + 3, 3, 2, '#333');
- drawPixelRect(a.x + a.w + 2, a.y + 1, 2, 4, '#888');
+ drawPixelRect(ax + 2, ay + 10, 6, 2, '#a0a0a0');
+ // Mic in hand
+ const micX = ax + (i % 2 === 0 ? -3 : 10);
+ drawPixelRect(micX, ay + 4, 2, 5, '#333');
+ drawPixelRect(micX - 1, ay + 2, 4, 3, '#666');
+ // Hand
+ drawPixelRect(ax + (i % 2 === 0 ? 0 : 7), ay + 5, 3, 2, a.color);
  }
 
- // 420 text on UFO
+ // 420 text
  ctx.font = 'bold 10px "DM Mono", monospace';
  ctx.fillStyle = '#33ff33';
  ctx.textAlign = 'center';
+ ctx.shadowColor = '#33ff33';
+ ctx.shadowBlur = 4;
  ctx.fillText('420', ux + 30, uy + 11);
+ ctx.shadowBlur = 0;
  }
 
  function drawPlayer() {
@@ -921,10 +1095,10 @@ function initGame() {
  spawnAccumulator = 0;
  spawnItem();
  }
- // Every ~8 seconds increase difficulty
+ // Every ~8 seconds increase difficulty, cap speedMult at 2.5x
  if (frame > 0 && Math.floor(frame / 480) > Math.floor((frame - dt) / 480)) {
- spawnRate = Math.max(22, spawnRate - 3);
- speedMult += 0.04;
+ spawnRate = Math.max(18, spawnRate - 3);
+ speedMult = Math.min(2.5, speedMult + 0.06);
  }
 
  for (let i = items.length - 1; i >= 0; i--) {
@@ -935,12 +1109,9 @@ function initGame() {
  score += it.type.score;
  scoreEl.textContent = score;
  addParticles(it.x, it.y, it.type.color);
+ playPickupSound(it.type.text);
 
- // Trigger dialog on diamond catch
- if (it.type.text === '\uD83D\uDC8E') {
- triggerDialog('diamond');
- }
- // Trigger dialog on milestone (every 100 pts)
+ if (it.type.text === '\uD83D\uDC8E') triggerDialog('diamond');
  const milestone = Math.floor(score / 100) * 100;
  if (milestone > lastMilestone && milestone >= 100) {
  triggerDialog('milestone');
@@ -950,7 +1121,19 @@ function initGame() {
  items.splice(i, 1);
  continue;
  }
- if (it.y > H + 20) items.splice(i, 1);
+ if (it.y > H + 20) {
+ if (overtime) {
+ missedItems++;
+ if (missedItems >= MISSES_PER_LIFE) {
+ missedItems = 0;
+ lives--;
+ playLifeLostSound();
+ if (livesEl) livesEl.textContent = '♥'.repeat(Math.max(0, lives));
+ if (lives <= 0) { endGame(false); return; }
+ }
+ }
+ items.splice(i, 1);
+ }
  }
 
  // UFO event update
@@ -1039,22 +1222,40 @@ function initGame() {
  function startGame() {
  score = 0; timeLeft = 60; frame = 0; bgCycle = 0; lastTime = 0;
  items = []; particles = []; busted = false; bustedFrame = 0; copY = -60;
- spawnRate = 45; speedMult = 1.0; activeDialog = null; lastMilestone = 0;
+ spawnRate = 42; speedMult = 1.0; activeDialog = null; lastMilestone = 0;
  spawnAccumulator = 0;
- ufoEvent = { active: false, triggered: false, timer: 0, x: -80, y: -50, beamAlpha: 0, abductees: [] };
+ lives = MAX_LIVES; missedItems = 0; overtime = false;
+ ufoEvent = { active: false, triggered: false, timer: 0, x: -80, y: -50, beamAlpha: 0, abductees: [], rot: 0, beamParticles: [] };
  player.x = W / 2 - 20;
  scoreEl.textContent = '0';
  timerEl.textContent = '60';
+ if (livesEl) livesEl.textContent = '♥'.repeat(MAX_LIVES);
  startOverlay.classList.add('hidden');
  overOverlay.classList.add('hidden');
+ if (overtimeOverlay) overtimeOverlay.classList.add('hidden');
  running = true;
+ startMusic(selectedChar === 'male' ? 'male' : 'anime');
  animId = requestAnimationFrame(loop);
  timerId = setInterval(() => {
- if (busted) return;
+ if (busted || overtime) return;
  timeLeft--;
  timerEl.textContent = timeLeft;
- if (timeLeft <= 0) endGame(false);
+ if (timeLeft <= 0) {
+ if (score >= 1000) triggerOvertime();
+ else endGame(false);
+ }
  }, 1000);
+ }
+
+ function triggerOvertime() {
+ overtime = true;
+ timeLeft = 0;
+ timerEl.textContent = 'OT';
+ if (overtimeOverlay) {
+ overtimeOverlay.classList.remove('hidden');
+ setTimeout(() => overtimeOverlay.classList.add('hidden'), 2500);
+ }
+ playOvertimeSound();
  }
 
  function endGame(isBusted) {
@@ -1063,12 +1264,15 @@ function initGame() {
  clearInterval(timerId);
  if (isBusted) {
  finalScoreEl.innerHTML = 'BUSTED<br>score: ' + score + '';
+ } else if (overtime && lives <= 0) {
+ finalScoreEl.innerHTML = 'OVERTIME OVER<br>score: ' + score + '';
  } else {
  finalScoreEl.textContent = 'score: ' + score;
  }
  overOverlay.classList.remove('hidden');
  const prev = parseInt(localStorage.getItem('pls_highscore') || '0');
  if (score > prev) localStorage.setItem('pls_highscore', String(score));
+ startMusic('menu');
  }
 
  function onKey(e, pressed) {
@@ -1113,10 +1317,11 @@ function initGame() {
  restartBtn.addEventListener('click', () => {
  startOverlay.classList.remove('hidden');
  overOverlay.classList.add('hidden');
- // Reset to character select
+ if (overtimeOverlay) overtimeOverlay.classList.add('hidden');
  running = false;
  cancelAnimationFrame(animId);
  clearInterval(timerId);
+ startMusic('menu');
  drawSky();
  if (selectedChar === 'male') drawPlayer();
  else drawAnimeGirl();
@@ -1128,7 +1333,8 @@ function initGame() {
  clearInterval(timerId);
  document.removeEventListener('keydown', keyDown);
  document.removeEventListener('keyup', keyUp);
- ufoEvent = { active: false, triggered: false, timer: 0, x: -80, y: -50, beamAlpha: 0, abductees: [] };
+ startMusic('menu');
+ ufoEvent = { active: false, triggered: false, timer: 0, x: -80, y: -50, beamAlpha: 0, abductees: [], rot: 0, beamParticles: [] };
  }, { once: true });
 
  drawSky();

@@ -535,3 +535,82 @@ button, a { font:inherit; color:inherit; }
  .char-btn { padding: 10px 12px; }
  .char-preview { width: 36px; height: 36px; }
 }
+
+/* ===== GAME LIVES ===== */
+#game-lives {
+  color: #e85d5d;
+  font-size: 16px;
+  letter-spacing: 2px;
+}
+
+/* ===== OVERTIME OVERLAY ===== */
+#game-overtime {
+  background: rgba(13,13,18,0.92);
+}
+#game-overtime p:first-child {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: 42px;
+  color: #ffcc00;
+  animation: pulse 1s ease-in-out infinite;
+}
+#game-overtime-msg {
+  color: #e8e6df;
+  font-size: 13px;
+}
+
+/* ===== VOLUME CONTROLS ===== */
+.game-volume {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  padding: 8px 0;
+  background: var(--paper);
+  border-top: 1px solid var(--ink);
+}
+.game-volume label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.game-volume input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 70px;
+  height: 3px;
+  background: var(--line);
+  border-radius: 2px;
+  outline: none;
+}
+.game-volume input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  background: var(--ink);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.game-volume input[type="range"]::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  background: var(--ink);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+/* ===== MISSED ITEMS COUNTER (subtle) ===== */
+.missed-indicator {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: rgba(232,230,223,0.5);
+  font-family: "DM Mono", monospace;
+  z-index: 5;
+}
