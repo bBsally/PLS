@@ -78,7 +78,14 @@ bindBetaForm = function() {
  form.reset();
  showToast(result.message || 'Request sent!');
  if (result.count) {
- document.querySelectorAll('.beta-count').forEach(el => { el.textContent = result.count; });
+ const container = document.getElementById('stack-dollars');
+ if (container) {
+ const span = document.createElement('span');
+ span.className = 'stack-dollar';
+ span.textContent = '$';
+ span.style.animationDelay = '0s';
+ container.appendChild(span);
+ }
  }
  }
  } catch {
@@ -94,9 +101,18 @@ function updateCount(type) {
  fetch('/api/count?type=' + (type || 'beta') + '&t=' + Date.now())
  .then(r => r.json())
  .then(d => {
- document.querySelectorAll('.beta-count').forEach(el => {
- el.textContent = d.count ?? '—';
- });
+ const count = parseInt(d.count) || 0;
+ const container = document.getElementById('stack-dollars');
+ if (container) {
+ container.innerHTML = '';
+ for (let i = 0; i < Math.min(count, 200); i++) {
+ const span = document.createElement('span');
+ span.className = 'stack-dollar';
+ span.textContent = '$';
+ span.style.animationDelay = (i * 0.02) + 's';
+ container.appendChild(span);
+ }
+ }
  })
  .catch(() => {});
 }
