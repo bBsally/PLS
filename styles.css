@@ -93,12 +93,12 @@ button, a { font:inherit; color:inherit; }
 /* Center top row */
 .folder-plugin { left:38%; top:10px; }
 .folder-store { left:55%; top:10px; }
-/* Right column - symmetric to left */
-.folder-about { right:6%; top:10px; left:auto; }
-.folder-contact { right:22%; top:230px; left:auto; }
-/* Left column - GAME closer to center */
+/* Left bottom row */
 .folder-tools { left:6%; top:230px; }
 .folder-game { left:22%; top:230px; }
+/* Right bottom row - symmetric */
+.folder-about { right:6%; top:230px; left:auto; }
+.folder-contact { right:22%; top:230px; left:auto; }
 
 .folder-plugin .folder-icon { background:var(--acid); }
 .folder-contact .folder-icon { background:#c4b8ad; }
@@ -149,10 +149,10 @@ button, a { font:inherit; color:inherit; }
   .folder-body b { font-size:12px; }
   .folder-plugin { left:50%; top:30px; margin-left:-140px; }
   .folder-store { left:50%; top:30px; margin-left:10px; }
-  .folder-about { right:5%; top:10px; left:auto; }
-  .folder-contact { right:5%; top:260px; left:auto; }
   .folder-tools { left:5%; top:240px; }
   .folder-game { left:5%; top:370px; }
+  .folder-about { right:5%; top:240px; left:auto; }
+  .folder-contact { right:5%; top:370px; left:auto; }
   .footer { padding:12px 17px; line-height:1.4; }
   .footer span:nth-child(2) { display:none; }
   .plugin-view { grid-template-columns:1fr; gap:22px; }
