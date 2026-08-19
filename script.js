@@ -40,6 +40,11 @@ dialog.addEventListener('click', (event) => {
  if (event.target === dialog) dialog.close();
 });
 
+// Always stop game music when any panel closes
+dialog.addEventListener('close', () => {
+ startMusic('menu');
+});
+
 document.querySelector('.sound-toggle').addEventListener('click', (event) => {
  const on = event.currentTarget.getAttribute('aria-pressed') === 'true';
  event.currentTarget.setAttribute('aria-pressed', String(!on));
@@ -1094,7 +1099,6 @@ function initGame() {
  clearInterval(timerId);
  document.removeEventListener('keydown',keyDown);
  document.removeEventListener('keyup',keyUp);
- startMusic('menu');
  ufoEvent={active:false,triggered:false,timer:0,x:-80,y:-50,beamAlpha:0,abductees:[],rot:0,beamParticles:[]};
  },{once:true});
 
