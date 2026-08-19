@@ -41,9 +41,7 @@ dialog.addEventListener('click', (event) => {
 });
 
 // Always stop game music when any panel closes
-dialog.addEventListener('close', () => {
- startMusic('menu');
-});
+// REMOVED: dialog.addEventListener('close', () => { startMusic('menu'); });
 
 document.querySelector('.sound-toggle').addEventListener('click', (event) => {
  const on = event.currentTarget.getAttribute('aria-pressed') === 'true';
@@ -145,7 +143,7 @@ const ICONS = {
 
 const STATUS_ICONS = {
  gaming: '<svg viewBox="0 0 24 24"><path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 9 19.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>',
- music: '<svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>',
+ music: '<svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-4z"/></svg>',
  browser: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>',
  chat: '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>',
  creative: '<svg viewBox="0 0 24 24"><path d="M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3zm13.71-9.37l-1.34-1.34a.996.996 0 00-1.41 0L9 12.25 11.75 15l8.96-8.96a.996.996 0 000-1.41z"/></svg>',
@@ -1148,7 +1146,9 @@ function initGame() {
  overOverlay.classList.remove('hidden');
  const prev=parseInt(localStorage.getItem('pls_highscore')||'0');
  if (score>prev) localStorage.setItem('pls_highscore',String(score));
- startMusic('menu');
+ // CHANGED: stop music instead of starting menu music
+ if (menuMusic) { menuMusic.pause(); menuMusic.currentTime = 0; }
+ if (gameMusic) { gameMusic.pause(); gameMusic.currentTime = 0; }
  }
 
  function onKey(e,pressed){
@@ -1195,7 +1195,9 @@ function initGame() {
  running=false;
  cancelAnimationFrame(animId);
  clearInterval(timerId);
- startMusic('menu');
+ // CHANGED: stop music instead of starting menu music
+ if (menuMusic) { menuMusic.pause(); menuMusic.currentTime = 0; }
+ if (gameMusic) { gameMusic.pause(); gameMusic.currentTime = 0; }
  drawSky();
  if (selectedChar==='male') drawPlayer();
  else drawAnimeGirl();
@@ -1208,6 +1210,9 @@ function initGame() {
  document.removeEventListener('keydown',keyDown);
  document.removeEventListener('keyup',keyUp);
  ufoEvent={active:false,triggered:false,timer:0,x:-80,y:-50,beamAlpha:0,abductees:[],rot:0,beamParticles:[]};
+ // CHANGED: stop music when closing game panel
+ if (menuMusic) { menuMusic.pause(); menuMusic.currentTime = 0; }
+ if (gameMusic) { gameMusic.pause(); gameMusic.currentTime = 0; }
  },{once:true});
 
  drawSky();
