@@ -78,7 +78,9 @@ bindBetaForm = function() {
  form.reset();
  showToast(result.message || 'Request sent!');
  if (result.count) {
+ const counter = document.getElementById('waitlist-count');
  const container = document.getElementById('stack-dollars');
+ if (counter) counter.textContent = result.count;
  if (container) {
  const span = document.createElement('span');
  span.className = 'stack-dollar';
@@ -102,7 +104,9 @@ function updateCount(type) {
  .then(r => r.json())
  .then(d => {
  const count = parseInt(d.count) || 0;
+ const counter = document.getElementById('waitlist-count');
  const container = document.getElementById('stack-dollars');
+ if (counter) counter.textContent = count;
  if (container) {
  container.innerHTML = '';
  for (let i = 0; i < Math.min(count, 200); i++) {
@@ -139,6 +143,17 @@ const ICONS = {
  other: ''
 };
 
+const STATUS_ICONS = {
+ gaming: '<svg viewBox="0 0 24 24"><path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 9 19.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>',
+ music: '<svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>',
+ browser: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>',
+ chat: '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>',
+ creative: '<svg viewBox="0 0 24 24"><path d="M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3zm13.71-9.37l-1.34-1.34a.996.996 0 00-1.41 0L9 12.25 11.75 15l8.96-8.96a.996.996 0 000-1.41z"/></svg>',
+ code: '<svg viewBox="0 0 24 24"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>',
+ idle: '<svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>',
+ other: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>'
+};
+
 function loadStatus() {
  fetch('/api/now?t=' + Date.now())
  .then(r => r.json())
@@ -148,7 +163,7 @@ function loadStatus() {
  const text = document.getElementById('now-text');
  if (!dot || !text) return;
  dot.className = 'now-dot ' + (data.status === 'online' ? 'online' : 'offline');
- if (icon) icon.innerHTML = ICONS[data.category || 'idle'] || ICONS.idle;
+ if (icon) icon.innerHTML = STATUS_ICONS[data.category || 'idle'] || STATUS_ICONS.idle;
  text.textContent = data.activity || 'chilling';
  })
  .catch(() => {
@@ -156,6 +171,83 @@ function loadStatus() {
  if (text) text.textContent = 'unavailable';
  });
 }
+
+/* ===== DRAGGABLE WIDGET ===== */
+(function initDraggableWidget() {
+ const widget = document.getElementById('now-playing');
+ const header = document.getElementById('now-header');
+ if (!widget || !header) return;
+
+ let isDragging = false;
+ let startX, startY, initialLeft, initialTop;
+
+ // Load saved position
+ const saved = localStorage.getItem('pls_widget_pos');
+ if (saved) {
+ try {
+ const pos = JSON.parse(saved);
+ widget.style.left = pos.left + 'px';
+ widget.style.top = pos.top + 'px';
+ widget.style.right = 'auto';
+ } catch(e) {}
+ }
+
+ header.addEventListener('mousedown', (e) => {
+ isDragging = true;
+ const rect = widget.getBoundingClientRect();
+ startX = e.clientX;
+ startY = e.clientY;
+ initialLeft = rect.left;
+ initialTop = rect.top;
+ widget.style.cursor = 'grabbing';
+ widget.style.right = 'auto';
+ e.preventDefault();
+ });
+
+ document.addEventListener('mousemove', (e) => {
+ if (!isDragging) return;
+ const dx = e.clientX - startX;
+ const dy = e.clientY - startY;
+ widget.style.left = (initialLeft + dx) + 'px';
+ widget.style.top = (initialTop + dy) + 'px';
+ });
+
+ document.addEventListener('mouseup', () => {
+ if (!isDragging) return;
+ isDragging = false;
+ widget.style.cursor = 'grab';
+ const rect = widget.getBoundingClientRect();
+ localStorage.setItem('pls_widget_pos', JSON.stringify({ left: rect.left, top: rect.top }));
+ });
+
+ // Touch support
+ header.addEventListener('touchstart', (e) => {
+ isDragging = true;
+ const rect = widget.getBoundingClientRect();
+ const touch = e.touches[0];
+ startX = touch.clientX;
+ startY = touch.clientY;
+ initialLeft = rect.left;
+ initialTop = rect.top;
+ widget.style.right = 'auto';
+ }, { passive: false });
+
+ document.addEventListener('touchmove', (e) => {
+ if (!isDragging) return;
+ const touch = e.touches[0];
+ const dx = touch.clientX - startX;
+ const dy = touch.clientY - startY;
+ widget.style.left = (initialLeft + dx) + 'px';
+ widget.style.top = (initialTop + dy) + 'px';
+ }, { passive: false });
+
+ document.addEventListener('touchend', () => {
+ if (!isDragging) return;
+ isDragging = false;
+ const rect = widget.getBoundingClientRect();
+ localStorage.setItem('pls_widget_pos', JSON.stringify({ left: rect.left, top: rect.top }));
+ });
+})();
 loadStatus();
 setInterval(loadStatus, 30000);
 

@@ -15,47 +15,55 @@
         <button class="sound-toggle" type="button" aria-pressed="false">sound: off</button>
       </header>
 
+      <!-- Draggable Status Widget -->
+      <div class="now-playing" id="now-playing">
+        <div class="now-header" id="now-header">
+          <span class="now-dot" id="now-dot"></span>
+          <span class="now-label">bB.sally status</span>
+          <span class="now-drag">&#8942;&#8942;</span>
+        </div>
+        <div class="now-body">
+          <span class="now-icon" id="now-icon"></span>
+          <span class="now-text" id="now-text">loading...</span>
+        </div>
+        <div class="now-footer">Cracow / PL</div>
+      </div>
+
       <section class="hero" id="home">
         <h1>PL<span>$</span><small>(- by bB.sally)</small></h1>
-        <div class="now-playing" id="now-playing">
-          <div class="now-header">
-            <span class="now-dot" id="now-dot"></span>
-            <span class="now-label">bB.sally status</span>
-          </div>
-          <div class="now-body">
-            <span class="now-icon" id="now-icon"></span>
-            <span class="now-text" id="now-text">loading...</span>
-          </div>
-          <div class="now-footer">Cracow / PL</div>
-        </div>
-
         <p class="intro">PLugin PL$ created by bB.sally to make work easier in every DAW.</p>
         <div class="status"><i></i> system online <span>Cracow / PL</span></div>
-        <div class="waitlist-stack" id="waitlist-stack">
-          <div class="stack-label">producers on the waitlist</div>
+        <div class="waitlist-section">
+          <div class="waitlist-count" id="waitlist-count">0</div>
+          <div class="waitlist-label">producers on the waitlist</div>
           <div class="stack-dollars" id="stack-dollars"></div>
         </div>
       </section>
 
       <section class="folder-field" aria-label="Katalogi PL$">
         <button class="folder folder-plugin" data-panel="plugin" type="button">
-          <span class="folder-icon">▰</span><span class="folder-body"><b>PL$</b><small>VST3 / 001</small></span>
+          <span class="folder-icon">&#9648;</span>
+          <span class="folder-body"><b>PL$</b><small>VST3 / 001</small></span>
         </button>
         <button class="folder folder-about" data-panel="about" type="button">
-          <span class="folder-icon">▰</span><span class="folder-body"><b>README_PL$</b><small>READ_ME.txt</small></span>
+          <span class="folder-icon">&#9648;</span>
+          <span class="folder-body"><b>README_PL$</b><small>READ_ME.txt</small></span>
         </button>
         <button class="folder folder-tools" data-panel="tools" type="button">
-          <span class="folder-icon">▰</span><span class="folder-body"><b>TOOLS</b><small>in development</small></span>
+          <span class="folder-icon">&#9648;</span>
+          <span class="folder-body"><b>TOOLS</b><small>in development</small></span>
         </button>
-
         <button class="folder folder-store" data-panel="store" type="button">
-          <span class="folder-icon">▰</span><span class="folder-body"><b>STORE</b><small>buy PL$</small></span>
+          <span class="folder-icon">&#9648;</span>
+          <span class="folder-body"><b>STORE</b><small>buy PL$</small></span>
         </button>
         <button class="folder folder-game" data-panel="game" type="button">
-          <span class="folder-icon">▰</span><span class="folder-body"><b>GAME</b><small>catch PL$</small></span>
+          <span class="folder-icon">&#9648;</span>
+          <span class="folder-body"><b>GAME</b><small>catch PL$</small></span>
         </button>
         <button class="folder folder-contact" data-panel="contact" type="button">
-          <span class="folder-icon">▰</span><span class="folder-body"><b>CONTACT</b><small>signal / mail</small></span>
+          <span class="folder-icon">&#9648;</span>
+          <span class="folder-body"><b>CONTACT</b><small>signal / mail</small></span>
         </button>
       </section>
 
