@@ -89,13 +89,16 @@ button, a { font:inherit; color:inherit; }
 .folder-body b { font-size:15px; font-weight:500; letter-spacing:-0.02em; }
 .folder-body small { margin-top:6px; font-size:10px; color:#4c4c49; }
 
-/* Desktop folder positions - well spread */
-.folder-plugin { left:6%; top:10px; }
-.folder-about { left:72%; top:15px; }
-.folder-tools { left:14%; top:230px; }
-.folder-store { left:42%; top:110px; }
-.folder-game { left:42%; top:280px; }
-.folder-contact { left:70%; top:240px; }
+/* Desktop folder positions */
+/* Center top row */
+.folder-plugin { left:38%; top:10px; }
+.folder-store { left:55%; top:10px; }
+/* Right column */
+.folder-about { left:78%; top:10px; }
+.folder-contact { left:78%; top:230px; }
+/* Left column - GAME closer to center */
+.folder-tools { left:6%; top:230px; }
+.folder-game { left:22%; top:230px; }
 
 .folder-plugin .folder-icon { background:var(--acid); }
 .folder-contact .folder-icon { background:#c4b8ad; }
@@ -144,12 +147,12 @@ button, a { font:inherit; color:inherit; }
   .folder { width:130px; height:126px; }
   .folder-icon { width:66px; height:47px; font-size:35px; }
   .folder-body b { font-size:12px; }
-  .folder-plugin { left:5%; top:30px; }
+  .folder-plugin { left:50%; top:30px; margin-left:-140px; }
+  .folder-store { left:50%; top:30px; margin-left:10px; }
   .folder-about { left:55%; top:10px; }
-  .folder-tools { left:8%; top:240px; }
-  .folder-store { left:50%; top:130px; margin-left:-65px; }
-  .folder-game { left:50%; top:280px; margin-left:-65px; }
-  .folder-contact { left:52%; top:260px; }
+  .folder-contact { left:55%; top:260px; }
+  .folder-tools { left:5%; top:240px; }
+  .folder-game { left:5%; top:370px; }
   .footer { padding:12px 17px; line-height:1.4; }
   .footer span:nth-child(2) { display:none; }
   .plugin-view { grid-template-columns:1fr; gap:22px; }
